@@ -1,1 +1,1 @@
-# PTTKPM25-26_ClassN05_Nhom6
+# Phân tích kỹ thuật phần mềm_N05_Nhom6
