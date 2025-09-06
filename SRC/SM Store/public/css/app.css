@@ -1,0 +1,59 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;500;600&display=swap');
+
+.sky-gradient {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+}
+
+.orbitron {
+    font-family: 'Orbitron', monospace;
+}
+
+.inter {
+    font-family: 'Inter', sans-serif;
+}
+.glow-button {
+    box-shadow: 0 0 20px rgba(102, 126, 234, 0.5);
+    transition: all 0.3s ease;
+}
+
+.glow-button:hover {
+    box-shadow: 0 0 30px rgba(102, 126, 234, 0.8);
+    transform: translateY(-2px);
+}
+.game-card {
+    backdrop-filter: blur(10px);
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: all 0.3s ease;
+}
+
+.game-card:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateY(-5px);
+}
+
+/* Đảm bảo tỷ lệ khung hình 16:9 */
+.relative {
+    position: relative;
+}
+
+.absolute {
+    position: absolute;
+}
+
+.w-full {
+    width: 100%;
+}
+
+.h-full {
+    height: 100%;
+}
+
+.rounded-xl {
+    border-radius: 0.75rem;
+}
+.nav-link.active {
+    color: #fbbf24 !important;
+    font-weight: 600;
+}
+
