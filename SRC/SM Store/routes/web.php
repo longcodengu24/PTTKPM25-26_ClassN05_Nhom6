@@ -21,6 +21,10 @@ Route::get('/admin', function () {
     return view('layouts.admin');
 });
 
+Route::get('/login', function () {
+    return view('auth.login');
+});
+
 
 Route::get('/firebase/ping', function (FirebaseAuth $auth) {
     try {
