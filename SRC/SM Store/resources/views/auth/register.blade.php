@@ -3,7 +3,7 @@
 @section('title', 'Đăng ký')
 
 @section('content')
-{{-- <div id="register" class="page-content">
+<div id="register" class="page-content">
     <section class="relative z-10 py-20 px-6">
         <div class="max-w-md mx-auto">
             <div class="game-card rounded-xl p-8">
@@ -18,7 +18,7 @@
                     </div>
                 @endif                
                 
-                <form action="{{ route('register') }}" method="POST" class="space-y-6">
+                <form action="" method="POST" class="space-y-6">
                     @csrf <!-- Bảo vệ chống tấn công CSRF -->
                     <div>
                         <label class="inter text-white block mb-2">Tên đăng nhập</label>
@@ -44,5 +44,5 @@
             </div>
         </div>
     </section>
-</div> --}}
+</div>
 @endsection
