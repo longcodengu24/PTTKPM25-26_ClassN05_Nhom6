@@ -9,6 +9,7 @@
     <script src="{{ asset('js/navbar.js') }}"></script>
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
     <link rel="stylesheet" href="{{ asset('css/animation.css') }}">
+    
 </head>
 <body class="sky-gradient min-h-screen overflow-x-hidden">
     <!-- Animated Background Elements -->

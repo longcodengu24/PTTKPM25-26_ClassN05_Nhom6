@@ -5,6 +5,8 @@ use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Auth\LoginController;
 use Kreait\Firebase\Contract\Auth as FirebaseAuth;
 
+use function Laravel\Prompts\password;
+
 Route::get('/', function () {
     return view('page.home.index');
 });
@@ -26,6 +28,12 @@ Route::get('/login', function () {
 });
 Route::get('register', function(){
     return view('auth.register');
+});
+Route::get('/forgot-password',function(){
+    return view('auth.forgot-password');
+});
+Route::get('/reset-password',function(){
+    return view('auth.reset-password');
 });
 
 Route::get('/firebase/ping', function (FirebaseAuth $auth) {
