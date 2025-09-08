@@ -1,0 +1,61 @@
+/* admin.css - CSS riêng cho giao diện admin */
+
+.sky-gradient {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+}
+.admin-sidebar {
+    background: linear-gradient(180deg, #1e293b 0%, #334155 100%);
+    backdrop-filter: blur(10px);
+}
+.admin-card {
+    backdrop-filter: blur(10px);
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: all 0.3s ease;
+}
+.admin-card:hover {
+    background: rgba(255, 255, 255, 0.15);
+    transform: translateY(-2px);
+}
+.inter { font-family: 'Inter', sans-serif; }
+.admin-content { display: none; }
+.admin-content.active { display: block; }
+.sidebar-link { transition: all 0.3s ease; }
+.sidebar-link:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateX(5px);
+}
+.sidebar-link.active {
+    background: rgba(102, 126, 234, 0.3);
+    border-right: 3px solid #667eea;
+}
+.stat-card {
+    background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.2);
+}
+.chart-placeholder {
+    background: linear-gradient(45deg, #667eea, #764ba2);
+    opacity: 0.8;
+}
+.table-row:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+.status-badge {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+}
+.status-active {
+    background: rgba(34, 197, 94, 0.2);
+    color: #22c55e;
+}
+.status-pending {
+    background: rgba(251, 191, 36, 0.2);
+    color: #fbbf24;
+}
+.status-inactive {
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+}
