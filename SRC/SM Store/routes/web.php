@@ -24,7 +24,9 @@ Route::get('/admin', function () {
 Route::get('/login', function () {
     return view('auth.login');
 });
-
+Route::get('register', function(){
+    return view('auth.register');
+});
 
 Route::get('/firebase/ping', function (FirebaseAuth $auth) {
     try {

@@ -30,7 +30,7 @@
                 </form>
                 
                 <div class="text-center mt-6">
-                    <p class="inter text-blue-200">Chưa có tài khoản? <a href="" class="text-yellow-300 hover:text-yellow-200">Đăng ký ngay</a></p>
+                    <p class="inter text-blue-200">Chưa có tài khoản? <a href="{{ url('/register') }}" class="text-yellow-300 hover:text-yellow-200">Đăng ký ngay</a></p>
                 </div>
             </div>
         </div>
