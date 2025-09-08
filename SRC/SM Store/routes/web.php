@@ -36,6 +36,32 @@ Route::get('/reset-password',function(){
     return view('auth.reset-password');
 });
 
+Route::prefix('admin')->group(function () {
+    Route::get('/dashboard', function () {
+        return view('admin.dashboard.dashboard');
+    })->name('admin.dashboard');
+
+    Route::get('/products', function () {
+        return view('admin.products.products');
+    })->name('admin.products');
+
+    Route::get('/orders', function () {
+        return view('admin.orders.orders');
+    })->name('admin.orders');
+
+    Route::get('/users', function () {
+        return view('admin.users.users');
+    })->name('admin.users');
+
+    Route::get('/analytics', function () {
+        return view('admin.analytics.analytics');
+    })->name('admin.analytics');
+
+    Route::get('/settings', function () {
+        return view('admin.settings.settings');
+    })->name('admin.settings');
+});
+
 Route::get('/firebase/ping', function (FirebaseAuth $auth) {
     try {
         // Simple call that exercises credentials; listUser is lightweight and requires auth scope
