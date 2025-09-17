@@ -9,8 +9,27 @@
             <div class="game-card rounded-xl p-8">
                 <h2 class="orbitron text-3xl font-bold text-white text-center mb-8">🔐 Đăng Nhập</h2>
                 
-                <form action="" method="POST" class="space-y-6">
-                    @csrf <!-- Bảo vệ chống tấn công CSRF -->
+
+                <!-- //hien thi loi -->
+                @if ($errors->any())
+    <div class="bg-red-500 text-white p-4 rounded-lg mb-4">
+        <ul>
+            @foreach ($errors->all() as $error)
+                <li>{{ $error }}</li>
+            @endforeach
+        </ul>
+    </div>
+@endif
+
+@if (session('success'))
+    <div class="bg-green-500 text-white p-4 rounded-lg mb-4">
+        {{ session('success') }}
+    </div>
+@endif
+
+                <form action="{{ route('login.submit') }}" method="POST" class="space-y-6">
+
+                    @csrf 
                     <div>
                         <label class="inter text-white block mb-2">Email</label>
                         <input type="email" name="email" class="w-full p-3 rounded-lg bg-white bg-opacity-20 text-white placeholder-blue-200 border border-white border-opacity-30" placeholder="Nhập email của bạn" required>
