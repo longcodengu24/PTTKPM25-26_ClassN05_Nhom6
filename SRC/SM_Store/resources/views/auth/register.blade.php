@@ -18,8 +18,9 @@
                     </div>
                 @endif                
                 
-                <form action="" method="POST" class="space-y-6">
-                    @csrf <!-- Bảo vệ chống tấn công CSRF -->
+                <form action="{{ route('register.submit') }}" method="POST" class="space-y-6">
+
+                    @csrf 
                     <div>
                         <label class="inter text-white block mb-2">Tên đăng nhập</label>
                         <input type="text" name="name" class="w-full p-3 rounded-lg bg-white bg-opacity-20 text-white placeholder-blue-200 border border-white border-opacity-30" placeholder="Nhập họ và tên" required>

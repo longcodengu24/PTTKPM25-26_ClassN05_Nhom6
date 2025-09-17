@@ -52,6 +52,14 @@
                     <li><a href="{{ route('admin.posts') }}" class="sidebar-link w-full text-left px-4 py-3 rounded-lg text-white inter flex items-center space-x-3">📝 Bài Viết</a></li>
                     <li><a href="{{ route('admin.analytics') }}" class="sidebar-link w-full text-left px-4 py-3 rounded-lg text-white inter flex items-center space-x-3">📈 Thống Kê</a></li>
                     <li><a href="{{ route('admin.settings') }}" class="sidebar-link w-full text-left px-4 py-3 rounded-lg text-white inter flex items-center space-x-3">⚙️ Cài Đặt</a></li>
+                
+<li>
+  <a href="{{ route('admin.roles.index') }}"
+     class="sidebar-link w-full text-left px-4 py-3 rounded-lg text-white inter flex items-center space-x-3">
+     🛡️ Phân quyền
+  </a>
+</li>
+
                 </ul>
             </nav>
         </div>
@@ -70,9 +78,10 @@
                         <button class="admin-card px-4 py-2 rounded-lg text-white inter hover:bg-white hover:bg-opacity-20">
                             🔔 Thông báo
                         </button>
-                        <button class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg text-white inter">
+                        <a href="{{ route('logout') }}" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg text-white inter">
                             Đăng Xuất
-                        </button>
+                        </a>
+
                     </div>
                 </div>
             </header>
