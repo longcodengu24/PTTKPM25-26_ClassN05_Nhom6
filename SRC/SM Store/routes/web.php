@@ -13,6 +13,9 @@ Route::get('/', function () {
 Route::get('/community', function () {
     return view('page.community.index');
 });
+// Route chi tiết bài viết cộng đồng
+use App\Http\Controllers\CommunityController;
+Route::get('/community/post/{id}', [CommunityController::class, 'show'])->name('community.post-detail');
 Route::get('/shop', function () {
     return view('page.shop.index');
 });
@@ -49,9 +52,30 @@ Route::prefix('admin')->group(function () {
         return view('admin.products.edit');
     })->name('admin.products.edit');
 
+    Route::get('/products/products', function () {
+        return view('admin.products.products');
+    })->name('admin.products.products');
+
     Route::get('/orders', function () {
         return view('admin.orders.orders');
     })->name('admin.orders');
+
+    Route::get('/posts', function () {
+        return view('admin.posts.posts');
+    })->name('admin.posts');
+
+    Route::get('/posts/edit', function () {
+        return view('admin.posts.edit');
+    })->name('admin.posts.edit');
+
+    Route::get('/posts/create', function () {
+        return view('admin.posts.create');
+    })->name('admin.posts.create');
+
+    Route::get('/posts/posts', function () {
+        return view('admin.posts.posts');
+    })->name('admin.posts.posts');
+
 
     Route::get('/users', function () {
         return view('admin.users.users');
