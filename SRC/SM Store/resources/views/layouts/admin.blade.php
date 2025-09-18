@@ -9,6 +9,8 @@
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
     <link rel="stylesheet" href="{{ asset('css/animation.css') }}">
     <link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+    
+
 </head>
 <body class="sky-gradient min-h-screen">
     <div class="fixed inset-0 pointer-events-none z-0">
@@ -44,9 +46,10 @@
             <nav class="flex-1">
                 <ul class="space-y-2">
                     <li><a href="{{ route('admin.dashboard') }}" class="sidebar-link w-full text-left px-4 py-3 rounded-lg text-white inter flex items-center space-x-3">📊 Dashboard</a></li>
-                    <li><a href="{{ route('admin.products') }}" class="sidebar-link w-full text-left px-4 py-3 rounded-lg text-white inter flex items-center space-x-3">🎼 Quản Lý Sheet Nhạc</a></li>
+                    <li><a href="{{ route('admin.products') }}" class="sidebar-link w-full text-left px-4 py-3 rounded-lg text-white inter flex items-center space-x-3">🎼 Sheet Nhạc</a></li>
                     <li><a href="{{ route('admin.orders') }}" class="sidebar-link w-full text-left px-4 py-3 rounded-lg text-white inter flex items-center space-x-3">🛒 Đơn Hàng</a></li>
                     <li><a href="{{ route('admin.users') }}" class="sidebar-link w-full text-left px-4 py-3 rounded-lg text-white inter flex items-center space-x-3">👥 Người Dùng</a></li>
+                    <li><a href="{{ route('admin.posts') }}" class="sidebar-link w-full text-left px-4 py-3 rounded-lg text-white inter flex items-center space-x-3">📝 Bài Viết</a></li>
                     <li><a href="{{ route('admin.analytics') }}" class="sidebar-link w-full text-left px-4 py-3 rounded-lg text-white inter flex items-center space-x-3">📈 Thống Kê</a></li>
                     <li><a href="{{ route('admin.settings') }}" class="sidebar-link w-full text-left px-4 py-3 rounded-lg text-white inter flex items-center space-x-3">⚙️ Cài Đặt</a></li>
                 </ul>
@@ -76,6 +79,6 @@
             @yield('content')
         </div>
     </div>
-    
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
 </body>
 </html>

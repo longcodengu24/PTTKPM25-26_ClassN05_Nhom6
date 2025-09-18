@@ -1,4 +1,6 @@
+
 <?php
+
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\RegisterController;
@@ -24,6 +26,16 @@ Route::get('/support', function () {
 });
 Route::get('/admin', function () {
     return view('layouts.admin');
+});
+
+Route::get('/account', function () {
+    return view('layouts.account');
+});
+Route::get('/account/settings', function () {
+    return view('account.settings');
+})->name('account.settings');
+Route::get('/app', function () {
+    return view('layouts.app');
 });
 
 Route::get('/login', function () {
@@ -89,6 +101,38 @@ Route::prefix('admin')->group(function () {
         return view('admin.settings.settings');
     })->name('admin.settings');
 });
+
+Route::prefix('account')->group(function () {
+    Route::get('/', function () {
+        return view('account.index');
+    })->name('account.index');
+    Route::get('/profile', function () {
+        return view('account.profile');
+    })->name('account.profile');
+    Route::get('/sheets', function () {
+        return view('account.sheets');
+    })->name('account.sheets');
+    Route::get('/posts', function () {
+        return view('account.posts');
+    })->name('account.posts');
+    Route::get('/activity', function () {
+        return view('account.activity');
+    })->name('account.activity');
+    Route::get('/settings', function () {
+        return view('account.settings');
+    })->name('account.settings');
+    // Nạp coin (Deposit) page
+    Route::get('/account/deposit', function () {
+        return view('account.deposit');
+    })->name('account.deposit');
+    // Rút coin (Withdraw) page
+    Route::get('/account/withdraw', function () {
+        return view('account.withdraw');
+    })->name('account.withdraw');
+
+
+});
+
 
 Route::get('/firebase/ping', function (FirebaseAuth $auth) {
     try {
