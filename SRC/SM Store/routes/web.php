@@ -1,7 +1,14 @@
+<<<<<<< HEAD
 
 <?php
 
 
+=======
+
+
+
+<?php
+>>>>>>> 6a4cff30571c1cb4a7741bee36c2e6b149f00755
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Auth\LoginController;
@@ -14,13 +21,28 @@ Route::get('/', function () {
 });
 Route::get('/community', function () {
     return view('page.community.index');
-});
-// Route chi tiết bài viết cộng đồng
-use App\Http\Controllers\CommunityController;
-Route::get('/community/post/{id}', [CommunityController::class, 'show'])->name('community.post-detail');
+})->name('community.index');
+
+// Community post detail
+Route::get('/community/post/{id}', function ($id) {
+    // In a real app, you would fetch post by $id
+    return view('page.community.post-detail');
+})->name('community.post-detail');
+
+
+
 Route::get('/shop', function () {
     return view('page.shop.index');
 });
+// Shop index page (for cart link)
+Route::get('/shop', function () {
+    return view('page.shop.index');
+})->name('shop.index');
+// Shop Cart page (moved to page/shop/cart.blade.php)
+Route::get('/shop/cart', function () {
+    return view('page.shop.cart');
+})->name('shop.cart');
+
 Route::get('/support', function () {
     return view('page.support.index');
 });
@@ -40,7 +62,7 @@ Route::get('/app', function () {
 
 Route::get('/login', function () {
     return view('auth.login');
-});
+})->name('login');
 Route::get('register', function(){
     return view('auth.register');
 });
@@ -56,38 +78,20 @@ Route::prefix('admin')->group(function () {
         return view('admin.dashboard.dashboard');
     })->name('admin.dashboard');
 
+
     Route::get('/products', function () {
         return view('admin.products.products');
     })->name('admin.products');
 
-    Route::get('/products/edit', function () {
+    // Route trang sửa sheet nhạc
+    Route::get('/products/edit/{id}', function ($id) {
+        // Trong thực tế sẽ lấy dữ liệu theo $id
         return view('admin.products.edit');
     })->name('admin.products.edit');
-
-    Route::get('/products/products', function () {
-        return view('admin.products.products');
-    })->name('admin.products.products');
 
     Route::get('/orders', function () {
         return view('admin.orders.orders');
     })->name('admin.orders');
-
-    Route::get('/posts', function () {
-        return view('admin.posts.posts');
-    })->name('admin.posts');
-
-    Route::get('/posts/edit', function () {
-        return view('admin.posts.edit');
-    })->name('admin.posts.edit');
-
-    Route::get('/posts/create', function () {
-        return view('admin.posts.create');
-    })->name('admin.posts.create');
-
-    Route::get('/posts/posts', function () {
-        return view('admin.posts.posts');
-    })->name('admin.posts.posts');
-
 
     Route::get('/users', function () {
         return view('admin.users.users');
@@ -100,8 +104,23 @@ Route::prefix('admin')->group(function () {
     Route::get('/settings', function () {
         return view('admin.settings.settings');
     })->name('admin.settings');
+
+    Route::get('/posts', function () {
+        return view('admin.posts.posts');
+    })->name('admin.posts');
+
+
+    Route::get('/posts/create', function () {
+        return view('admin.posts.create');
+    })->name('admin.posts.create');
+    Route::post('/posts/create', [\App\Http\Controllers\Admin\PostController::class, 'store'])->name('admin.posts.store');
+
+    Route::get('/posts/edit/{id}', function ($id) {
+        return view('admin.posts.edit');
+    })->name('admin.posts.edit');
 });
 
+<<<<<<< HEAD
 Route::prefix('account')->group(function () {
     Route::get('/', function () {
         return view('account.index');
@@ -132,6 +151,12 @@ Route::prefix('account')->group(function () {
 
 
 });
+=======
+// Account section
+
+
+
+>>>>>>> 6a4cff30571c1cb4a7741bee36c2e6b149f00755
 
 
 Route::get('/firebase/ping', function (FirebaseAuth $auth) {

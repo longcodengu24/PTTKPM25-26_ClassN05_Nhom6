@@ -4,7 +4,7 @@
 @section('title', 'Sửa Sheet Nhạc')
 
 @section('content')
-<div class="admin-content active px-6 pb-6 flex justify-center">
+<div class="admin-content active px-6 pb-6 flex justify-center ">
     <div class="admin-card rounded-xl p-8 w-full max-w-2xl">
         <h2 class="orbitron text-2xl font-bold text-white mb-6">Sửa Sheet Nhạc</h2>
         <form>
