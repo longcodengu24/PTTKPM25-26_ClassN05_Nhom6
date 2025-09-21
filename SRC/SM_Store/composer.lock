@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "194ac100ec23c6326394148c255a8401",
+    "content-hash": "017dcc5e83f26278ff4ce01062e7417d",
     "packages": [
         {
             "name": "beste/clock",
@@ -1933,16 +1933,16 @@
         },
         {
             "name": "kreait/firebase-php",
-            "version": "7.21.2",
+            "version": "7.22.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/kreait/firebase-php.git",
-                "reference": "f63ff9f199530b2a5a26c00a14f43a7b44a2b6cf"
+                "reference": "97a39cb83de9acf1b0de8b0aa2fa0da0d8955c79"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/kreait/firebase-php/zipball/f63ff9f199530b2a5a26c00a14f43a7b44a2b6cf",
-                "reference": "f63ff9f199530b2a5a26c00a14f43a7b44a2b6cf",
+                "url": "https://api.github.com/repos/kreait/firebase-php/zipball/97a39cb83de9acf1b0de8b0aa2fa0da0d8955c79",
+                "reference": "97a39cb83de9acf1b0de8b0aa2fa0da0d8955c79",
                 "shasum": ""
             },
             "require": {
@@ -1964,7 +1964,7 @@
                 "kreait/firebase-tokens": "^5.2",
                 "lcobucci/jwt": "^4.3|^5.3",
                 "mtdowling/jmespath.php": "^2.8.0",
-                "php": "~8.1.0 || ~8.2.0 || ~8.3.0 || ~8.4.0",
+                "php": "~8.1.0 || ~8.2.0 || ~8.3.0 || ~8.4.0 || ~8.5.0",
                 "psr/cache": "^1.0.1|^2.0|^3.0",
                 "psr/clock": "^1.0",
                 "psr/http-client": "^1.0.3",
@@ -2030,7 +2030,7 @@
                     "type": "github"
                 }
             ],
-            "time": "2025-08-15T07:30:48+00:00"
+            "time": "2025-09-20T22:11:10+00:00"
         },
         {
             "name": "kreait/firebase-tokens",

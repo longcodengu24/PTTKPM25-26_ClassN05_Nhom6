@@ -50,3 +50,36 @@ Route::prefix('admin')
         Route::post('/posts/create', [PostController::class, 'store'])->name('admin.posts.store');
         Route::get('/posts/edit/{id}', fn ($id) => view('admin.posts.edit'))->name('admin.posts.edit');
     });
+
+Route::prefix('account')->group(function () {
+    Route::get('/', function () {
+        return view('account.index');
+    })->name('account.index');
+    Route::get('/profile', function () {
+        return view('account.profile');
+    })->name('account.profile');
+    Route::get('/sheets', function () {
+        return view('account.sheets');
+    })->name('account.sheets');
+    Route::get('/posts', function () {
+        return view('account.posts');
+    })->name('account.posts');
+    Route::get('/activity', function () {
+        return view('account.activity');
+    })->name('account.activity');
+    Route::get('/settings', function () {
+        return view('account.settings');
+    })->name('account.settings');
+    // Nạp coin (Deposit) page
+    Route::get('/account/deposit', function () {
+        return view('account.deposit');
+    })->name('account.deposit');
+    // Rút coin (Withdraw) page
+    Route::get('/account/withdraw', function () {
+        return view('account.withdraw');
+    })->name('account.withdraw');
+
+
+});
+
+    
