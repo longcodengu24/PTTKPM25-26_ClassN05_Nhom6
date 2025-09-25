@@ -5,6 +5,7 @@ use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\Admin\PostController;
+use App\Http\Controllers\Admin\UserRoleController;
 
 Route::get('/', fn () => view('page.home.index'))->name('home');
 

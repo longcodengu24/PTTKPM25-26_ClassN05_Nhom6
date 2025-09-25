@@ -31,19 +31,24 @@ class LoginController extends Controller
             $signIn = $auth->signInWithEmailAndPassword($request->email, $request->password);
             $uid    = $signIn->firebaseUserId();
 
-            // Lấy record để đọc custom claims (role)
+            
             $record = $auth->getUser($uid);
             $role   = $record->customClaims['role'] ?? 'user';
 
-            // Lưu session
+           
+            $avatar = $record->photoUrl ?? '/img/default-avatar.png';
+            $coins  = 100;
+
             session([
                 'firebase_uid' => $uid,
                 'email'        => $record->email,
-                'name'         => $record->displayName,
+                'name'         => $record->displayName ?? 'Người dùng',
                 'role'         => $role,
+                'avatar'       => $avatar,
+                'coins'        => $coins,
             ]);
 
-            // Điều hướng theo role
+
             return match ($role) {
                 'admin'    => redirect()->route('admin.dashboard')->with('success', 'Đăng nhập thành công (admin)!'),
                 'business' => redirect()->route('business.dashboard')->with('success', 'Đăng nhập thành công (business)!'),
@@ -60,7 +65,7 @@ class LoginController extends Controller
 
     public function logout()
     {
-        session()->forget(['firebase_uid','email','name','role']);
+        session()->forget(['firebase_uid','email','name','role','avatar','coins']);
         return redirect()->route('login')->with('success', 'Bạn đã đăng xuất.');
     }
 }
