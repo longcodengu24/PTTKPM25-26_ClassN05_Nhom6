@@ -14,27 +14,31 @@
             <a href="{{ url('/support') }}" class="nav-link text-white hover:text-yellow-300 transition-colors {{ request()->is('support') ? 'active' : '' }}">Hỗ Trợ</a>
         </div>
         
-        {{-- <!-- Kiểm tra trạng thái đăng nhập -->
-        @if(auth()->check())
+        {{-- Kiểm tra trạng thái đăng nhập --}}
+        @if(session()->has('firebase_uid'))
             <!-- Hiển thị khi đã đăng nhập -->
             <div class="flex items-center space-x-4">
                 <!-- Hiển thị ảnh đại diện -->
                 <a href="{{ url('/account') }}" class="flex items-center space-x-2">
-                    <img src="{{ auth()->user()->avatar ?? '/img/default-avatar.png' }}" alt="Avatar" class="w-10 h-10 rounded-full border-2 border-white">
-                    <span class="text-white">{{ auth()->user()->name }}</span>
+                    <img src="{{ session('avatar', '/img/default-avatar.png') }}" 
+                         alt="Avatar" 
+                         class="w-10 h-10 rounded-full border-2 border-white">
+                    <span class="text-white">{{ session('name', 'Người dùng') }}</span>
                 </a>
 
                 <!-- Hiển thị số xu và giỏ hàng trên trang Shop -->
                 @if(request()->is('shop'))
-                    <span class="text-yellow-300 font-bold">Xu: {{ auth()->user()->coins }}</span>
-                    <a href="{{ url('/cart') }}" class="bg-white bg-opacity-20 text-white px-4 py-2 rounded-lg hover:bg-opacity-30 transition-all">
+                    <span class="text-yellow-300 font-bold">
+                        Xu: {{ session('coins', 0) }}
+                    </span>
+                    <a href="{{ url('/cart') }}" 
+                       class="bg-white bg-opacity-20 text-white px-4 py-2 rounded-lg hover:bg-opacity-30 transition-all">
                         🛒 Giỏ Hàng
                     </a>
                 @endif
 
                 <!-- Nút Đăng Xuất -->
-                <form action="{{ route('logout') }}" method="POST" class="inline">
-                    @csrf
+                <form action="{{ route('logout') }}" method="GET" class="inline">
                     <button type="submit" class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-all">
                         Đăng Xuất
                     </button>
@@ -42,15 +46,10 @@
             </div>
         @else
             <!-- Hiển thị khi chưa đăng nhập -->
-            <a href="{{ url('/login') }}" class="bg-white bg-opacity-20 text-white px-6 py-2 rounded-full backdrop-blur-sm hover:bg-opacity-30 transition-all inter">
+            <a href="{{ url('/login') }}" 
+               class="bg-white bg-opacity-20 text-white px-6 py-2 rounded-full backdrop-blur-sm hover:bg-opacity-30 transition-all inter">
                 Đăng Nhập
             </a>
-
-        @endif --}}
-
-        <!-- Hiển thị khi chưa đăng nhập -->
-            <a href="{{ url('/login') }}" class="bg-white bg-opacity-20 text-white px-6 py-2 rounded-full backdrop-blur-sm hover:bg-opacity-30 transition-all inter">
-                Đăng Nhập
-            </a>
+        @endif
     </div>
 </nav>
