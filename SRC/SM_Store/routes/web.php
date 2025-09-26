@@ -27,9 +27,9 @@ Route::post('/register', [RegisterController::class, 'register'])->name('registe
 Route::get('/forgot-password', [ForgotPasswordController::class, 'showForm'])->name('password.request');
 Route::post('/forgot-password', [ForgotPasswordController::class, 'sendResetLink'])->name('password.email');
 
-Route::get('/business/dashboard', fn () => view('business.dashboard'))
-    ->name('business.dashboard')
-    ->middleware(['firebase.auth', 'role:business']);
+Route::get('/saler/dashboard', fn () => view('saler.dashboard'))
+    ->name('saler.dashboard')
+    ->middleware(['firebase.auth', 'role:saler']);
 
 Route::prefix('admin')
     ->middleware(['firebase.auth', 'role:admin'])
@@ -83,4 +83,4 @@ Route::prefix('account')->group(function () {
 
 });
 
-    
+ 
