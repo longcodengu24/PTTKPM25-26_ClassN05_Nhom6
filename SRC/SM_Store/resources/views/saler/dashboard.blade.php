@@ -1,12 +1,12 @@
-@extends('layouts.business')
+@extends('layouts.saler')
 
-@section('title', 'Business Dashboard')
+@section('title', 'Saler Dashboard')
 
 @section('content')
 <div class="p-6">
     <!-- Header -->
     <div class="flex items-center justify-between mb-6">
-        <h2 class="orbitron text-2xl font-bold text-white">📊 Business Dashboard</h2>
+        <h2 class="orbitron text-2xl font-bold text-white">📊 Saler Dashboard</h2>
         <span class="text-sm text-gray-300">
             Xin chào, {{ session('name') }} ({{ session('email') }})
         </span>

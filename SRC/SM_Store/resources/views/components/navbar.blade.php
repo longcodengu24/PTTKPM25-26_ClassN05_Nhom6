@@ -37,12 +37,18 @@
                     </a>
                 @endif
 
+                <a href="{{ route('saler.dashboard') }}" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-all">
+                    Shop của tôi
+                </a>
                 <!-- Nút Đăng Xuất -->
                 <form action="{{ route('logout') }}" method="GET" class="inline">
                     <button type="submit" class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-all">
                         Đăng Xuất
                     </button>
                 </form>
+
+
+                
             </div>
         @else
             <!-- Hiển thị khi chưa đăng nhập -->

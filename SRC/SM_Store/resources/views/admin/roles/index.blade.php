@@ -49,7 +49,7 @@
                     <td class="px-4 py-3">
                         <span class="px-3 py-1 rounded-full text-xs
                             @if($u['role']=='admin') bg-red-500 text-white
-                            @elseif($u['role']=='business') bg-blue-500 text-white
+                            @elseif($u['role']=='saler') bg-blue-500 text-white
                             @else bg-green-500 text-white @endif">
                             {{ ucfirst($u['role']) }}
                         </span>
@@ -59,7 +59,7 @@
                             @csrf
                             <select name="role" class="p-2 border rounded-lg">
                                 <option value="user"     @selected($u['role']=='user')>User</option>
-                                <option value="business" @selected($u['role']=='business')>Business</option>
+                                <option value="saler" @selected($u['role']=='saler')>Saler</option>
                                 <option value="admin"    @selected($u['role']=='admin')>Admin</option>
                             </select>
                             <button type="submit" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">

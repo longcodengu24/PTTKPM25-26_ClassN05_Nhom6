@@ -31,7 +31,7 @@ class UserRoleController extends Controller
     public function updateRole(Request $request, string $uid)
     {
         $request->validate([
-            'role' => 'required|in:admin,business,user',
+            'role' => 'required|in:admin,saler,user',
         ]);
 
         try {

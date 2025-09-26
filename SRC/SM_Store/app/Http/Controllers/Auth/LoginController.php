@@ -51,7 +51,7 @@ class LoginController extends Controller
 
             return match ($role) {
                 'admin'    => redirect()->route('admin.dashboard')->with('success', 'Đăng nhập thành công (admin)!'),
-                'business' => redirect()->route('business.dashboard')->with('success', 'Đăng nhập thành công (business)!'),
+                'saler' => redirect()->route('home')->with('success', 'Đăng nhập thành công (saler)!'),
                 default    => redirect()->route('home')->with('success', 'Đăng nhập thành công!'),
             };
         } catch (InvalidPassword $e) {
