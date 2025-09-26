@@ -1,12 +1,17 @@
-# Phân tích kỹ thuật phần mềm_N05_Nhom6
-Dự án về web bán sheet và quản lý sheet nhạc trong game Sky Children
-
-Thành viên nhóm:
-1. Lê Ngọc Khánh 23010546
-2. Nguyễn Khắc Long 23010418
-3. Nguyễn Anh Tài 23010584
-
 # 🎵 Sky Music Store
+
+## 📋 Thông tin dự án
+
+**Phân tích kỹ thuật phần mềm N05_Nhóm6**
+
+**Đề tài:** Website thương mại bản nhạc cho trò chơi Sky: Children of the Light
+
+### 👥 Thành viên nhóm:
+1. **Lê Ngọc Khánh** - 23010546
+2. **Nguyễn Khắc Long** - 23010418  
+3. **Nguyễn Anh Tài** - 23010584
+
+---
 
 **Sky Music Store** là một ứng dụng web đa chức năng được xây dựng bằng Laravel, tích hợp Firebase Authentication với hệ thống phân quyền chi tiết cho admin, business và user.
 
@@ -201,86 +206,6 @@ routes/
 - Truy cập các tính năng công khai
 - Mua sắm và tương tác cộng đồng
 - Quản lý tài khoản cá nhân
-
-## 📊 Tài liệu Biểu đồ PlantUML
-
-Dự án bao gồm các biểu đồ PlantUML chi tiết để mô tả kiến trúc và luồng hoạt động của hệ thống. Tất cả file biểu đồ được lưu trữ trong thư mục `docs/diagrams/`.
-
-### 📁 Cấu Trúc Thư Mục Biểu Đồ
-
-```
-docs/diagrams/
-├── README.md                 # Hướng dẫn chi tiết
-├── sequence/                 # Biểu đồ tuần tự (Sequence Diagrams)
-├── usecase/                  # Biểu đồ ca sử dụng (Use Case Diagrams)  
-├── class/                    # Biểu đồ lớp (Class Diagrams)
-├── component/                # Biểu đồ thành phần (Component Diagrams)
-└── erd/                      # Biểu đồ thực thể quan hệ (ERD)
-```
-
-### 🎯 Các Loại Biểu Đồ Có Sẵn
-
-#### ✅ Sequence Diagrams (Biểu đồ tuần tự)
-- User Authentication Flow
-- Admin Role Management Process  
-- Shopping Cart Checkout Process
-- Dashboard Analytics Loading
-- Community Post Management
-- Firebase Session Management
-- Business Dashboard Access Flow
-
-#### 📋 Biểu Đồ Cần Bổ Sung
-- **Use Case Diagrams:** Hệ thống xác thực, Panel quản trị, Dashboard kinh doanh
-- **Class Diagrams:** Controllers, Models, Middleware structure
-- **Component Diagrams:** System architecture, Firebase integration
-- **ERD:** Database schema và quan hệ giữa các bảng
-
-### 🚀 Cách Render Biểu Đồ
-
-#### 1. Sử dụng VS Code Extension
-```bash
-# Cài đặt PlantUML extension trong VS Code
-# Mở file .puml và nhấn Alt+D để preview
-```
-
-#### 2. Sử dụng PlantUML JAR
-```bash
-# Tải PlantUML JAR
-wget http://sourceforge.net/projects/plantuml/files/plantuml.jar/download -O plantuml.jar
-
-# Render biểu đồ thành PNG
-java -jar plantuml.jar -tpng docs/diagrams/sequence/seq_user_login.puml
-
-# Render biểu đồ thành SVG
-java -jar plantuml.jar -tsvg docs/diagrams/sequence/seq_user_login.puml
-```
-
-#### 3. Render Online
-- Truy cập: https://www.plantuml.com/plantuml/uml/
-- Copy/paste code PlantUML để render trực tuyến
-
-### 📝 Quy Tắc Đặt Tên File
-
-- **Sequence Diagrams:** `seq_[tên_chức_năng].puml`
-- **Use Case Diagrams:** `uc_[tên_module].puml`  
-- **Class Diagrams:** `class_[tên_module].puml`
-- **Component Diagrams:** `comp_[tên_hệ_thống].puml`
-- **ERD:** `erd_[tên_database].puml`
-
-### 🎨 Styling Guidelines
-
-Tất cả biểu đồ sử dụng theme màu nhất quán:
-- **Nền:** `#FEFEFE` (Trắng nhẹ)
-- **Participant:** `#E1F5FE` (Xanh nhạt)
-- **Border:** `#01579B` (Xanh đậm)
-- **Arrow:** `#1976D2` (Xanh chủ đạo)
-
-### 🔗 Tham Khảo PlantUML
-
-- [PlantUML Language Reference](https://plantuml.com/guide)
-- [Sequence Diagram Syntax](https://plantuml.com/sequence-diagram)
-- [Use Case Diagram Syntax](https://plantuml.com/use-case-diagram)
-- [Class Diagram Syntax](https://plantuml.com/class-diagram)
 
 ## 🤝 Đóng góp
 
