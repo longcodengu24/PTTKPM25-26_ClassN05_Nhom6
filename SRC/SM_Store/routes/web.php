@@ -4,8 +4,9 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\ForgotPasswordController;
-use App\Http\Controllers\Admin\PostController;
+// use App\Http\Controllers\Admin\PostController;
 use App\Http\Controllers\Admin\UserRoleController;
+use App\Http\Controllers\Saler\SalerController;
 
 Route::get('/', fn () => view('page.home.index'))->name('home');
 
@@ -27,9 +28,32 @@ Route::post('/register', [RegisterController::class, 'register'])->name('registe
 Route::get('/forgot-password', [ForgotPasswordController::class, 'showForm'])->name('password.request');
 Route::post('/forgot-password', [ForgotPasswordController::class, 'sendResetLink'])->name('password.email');
 
-Route::get('/saler/dashboard', fn () => view('saler.dashboard'))
-    ->name('saler.dashboard')
-    ->middleware(['firebase.auth', 'role:saler']);
+Route::prefix('saler')
+    ->middleware(['firebase.auth', 'role:saler'])
+    ->group(function () {
+
+        // 👇 Thêm dòng này để fix lỗi:
+        Route::get('/dashboard', fn() => view('saler.dashboard'))
+            ->name('saler.dashboard');
+
+        // Các route khác:
+        Route::get('/orders', fn () => view('saler.orders.index'))->name('saler.orders');
+        Route::get('/orders/{id}', fn ($id) => view('saler.orders.detail'))->name('saler.orders.detail');
+        Route::get('/users', fn () => view('saler.users.index'))->name('saler.users');
+        Route::get('/posts', fn () => view('saler.posts.index'))->name('saler.posts');
+        Route::get('/posts/create', fn () => view('saler.posts.create'))->name('saler.posts.create');
+        Route::get('/analytics', fn () => view('saler.analytics.index'))->name('saler.analytics');
+        Route::get('/settings', fn () => view('saler.settings.index'))->name('saler.settings');
+
+        // Quản lý sản phẩm
+        Route::get('/products',             [SalerController::class, 'index'])->name('saler.products');
+        Route::get('/products/create',      [SalerController::class, 'create'])->name('saler.products.create');
+        Route::post('/products',            [SalerController::class, 'store'])->name('saler.products.store');
+        Route::get('/products/{id}/edit',   [SalerController::class, 'edit'])->name('saler.products.edit');
+        Route::put('/products/{id}',        [SalerController::class, 'update'])->name('saler.products.update');
+        Route::delete('/products/{id}',     [SalerController::class, 'destroy'])->name('saler.products.destroy');
+
+    });
 
 Route::prefix('admin')
     ->middleware(['firebase.auth', 'role:admin'])
@@ -48,7 +72,7 @@ Route::prefix('admin')
         Route::get('/settings', fn () => view('admin.settings.settings'))->name('admin.settings');
         Route::get('/posts', fn () => view('admin.posts.posts'))->name('admin.posts');
         Route::get('/posts/create', fn () => view('admin.posts.create'))->name('admin.posts.create');
-        Route::post('/posts/create', [PostController::class, 'store'])->name('admin.posts.store');
+        // Route::post('/posts/create', [PostController::class, 'store'])->name('admin.posts.store');
         Route::get('/posts/edit/{id}', fn ($id) => view('admin.posts.edit'))->name('admin.posts.edit');
     });
 
