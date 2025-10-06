@@ -8,15 +8,15 @@ use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\Admin\UserRoleController;
 use App\Http\Controllers\Saler\SalerController;
 
-Route::get('/', fn () => view('page.home.index'))->name('home');
+Route::get('/', fn() => view('page.home.index'))->name('home');
 
-Route::get('/community', fn () => view('page.community.index'))->name('community.index');
-Route::get('/community/post/{id}', fn ($id) => view('page.community.post-detail'))->name('community.post-detail');
+Route::get('/community', fn() => view('page.community.index'))->name('community.index');
+Route::get('/community/post/{id}', fn($id) => view('page.community.post-detail'))->name('community.post-detail');
 
-Route::get('/shop', fn () => view('page.shop.index'))->name('shop.index');
-Route::get('/shop/cart', fn () => view('page.shop.cart'))->name('shop.cart');
+Route::get('/shop', fn() => view('page.shop.index'))->name('shop.index');
+Route::get('/shop/cart', fn() => view('page.shop.cart'))->name('shop.cart');
 
-Route::get('/support', fn () => view('page.support.index'))->name('support.index');
+Route::get('/support', fn() => view('page.support.index'))->name('support.index');
 
 Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
 Route::post('/login', [LoginController::class, 'login'])->name('login.submit');
@@ -37,43 +37,50 @@ Route::prefix('saler')
             ->name('saler.dashboard');
 
         // Các route khác:
-        Route::get('/orders', fn () => view('saler.orders.index'))->name('saler.orders');
-        Route::get('/orders/{id}', fn ($id) => view('saler.orders.detail'))->name('saler.orders.detail');
-        Route::get('/users', fn () => view('saler.users.index'))->name('saler.users');
-        Route::get('/posts', fn () => view('saler.posts.index'))->name('saler.posts');
-        Route::get('/posts/create', fn () => view('saler.posts.create'))->name('saler.posts.create');
-        Route::get('/analytics', fn () => view('saler.analytics.index'))->name('saler.analytics');
-        Route::get('/settings', fn () => view('saler.settings.index'))->name('saler.settings');
+        Route::get('/orders', fn() => view('saler.orders.index'))->name('saler.orders');
+        Route::get('/orders/{id}', fn($id) => view('saler.orders.detail'))->name('saler.orders.detail');
+        Route::get('/users', fn() => view('saler.users.index'))->name('saler.users');
+        Route::get('/posts', fn() => view('saler.posts.index'))->name('saler.posts');
+        Route::get('/posts/create', fn() => view('saler.posts.create'))->name('saler.posts.create');
+        Route::get('/analytics', fn() => view('saler.analytics.index'))->name('saler.analytics');
+        Route::get('/profile', fn() => view('saler.profile.index'))->name('saler.profile');
+        Route::get('/settings', fn() => view('saler.settings.index'))->name('saler.settings');
 
         // Quản lý sản phẩm
-        Route::get('/products',             [SalerController::class, 'index'])->name('saler.products');
-        Route::get('/products/create',      [SalerController::class, 'create'])->name('saler.products.create');
-        Route::post('/products',            [SalerController::class, 'store'])->name('saler.products.store');
-        Route::get('/products/{id}/edit',   [SalerController::class, 'edit'])->name('saler.products.edit');
-        Route::put('/products/{id}',        [SalerController::class, 'update'])->name('saler.products.update');
-        Route::delete('/products/{id}',     [SalerController::class, 'destroy'])->name('saler.products.destroy');
+        Route::resource('products', \App\Http\Controllers\Seller\ProductController::class)->names([
+            'index' => 'saler.products.index',
+            'create' => 'saler.products.create',
+            'store' => 'saler.products.store',
+            'show' => 'saler.products.show',
+            'edit' => 'saler.products.edit',
+            'update' => 'saler.products.update',
+            'destroy' => 'saler.products.destroy'
+        ]);
 
+        // API routes cho product management
+        Route::post('/products/preview-file', [\App\Http\Controllers\Seller\ProductController::class, 'previewFile'])->name('saler.products.preview-file');
+        Route::patch('/products/{id}/toggle-status', [\App\Http\Controllers\Seller\ProductController::class, 'toggleStatus'])->name('seller.products.toggle-status');
     });
 
 Route::prefix('admin')
     ->middleware(['firebase.auth', 'role:admin'])
     ->group(function () {
-        Route::get('/dashboard', fn () => view('admin.dashboard.dashboard'))->name('admin.dashboard');
+        Route::get('/dashboard', fn() => view('admin.dashboard.dashboard'))->name('admin.dashboard');
 
         Route::get('/roles', [UserRoleController::class, 'index'])->name('admin.roles.index');
         Route::post('/roles/{uid}', [UserRoleController::class, 'updateRole'])->name('admin.roles.update');
 
 
-        Route::get('/products', fn () => view('admin.products.products'))->name('admin.products');
-        Route::get('/products/edit/{id}', fn ($id) => view('admin.products.edit'))->name('admin.products.edit');
-        Route::get('/orders', fn () => view('admin.orders.orders'))->name('admin.orders');
-        Route::get('/users', fn () => view('admin.users.users'))->name('admin.users');
-        Route::get('/analytics', fn () => view('admin.analytics.analytics'))->name('admin.analytics');
-        Route::get('/settings', fn () => view('admin.settings.settings'))->name('admin.settings');
-        Route::get('/posts', fn () => view('admin.posts.posts'))->name('admin.posts');
-        Route::get('/posts/create', fn () => view('admin.posts.create'))->name('admin.posts.create');
+        Route::get('/products', fn() => view('admin.products.products'))->name('admin.products');
+        Route::get('/products/edit/{id}', fn($id) => view('admin.products.edit'))->name('admin.products.edit');
+        Route::get('/orders', fn() => view('admin.orders.orders'))->name('admin.orders');
+        Route::get('/users', fn() => view('admin.users.users'))->name('admin.users');
+        Route::get('/analytics', fn() => view('admin.analytics.analytics'))->name('admin.analytics');
+        Route::get('/settings', fn() => view('admin.settings.settings'))->name('admin.settings');
+        Route::get('/posts', fn() => view('admin.posts.posts'))->name('admin.posts');
+        Route::get('/posts/create', fn() => view('admin.posts.create'))->name('admin.posts.create');
         // Route::post('/posts/create', [PostController::class, 'store'])->name('admin.posts.store');
-        Route::get('/posts/edit/{id}', fn ($id) => view('admin.posts.edit'))->name('admin.posts.edit');
+        Route::get('/posts/edit/{id}', fn($id) => view('admin.posts.edit'))->name('admin.posts.edit');
     });
 
 Route::prefix('account')->group(function () {
@@ -103,8 +110,4 @@ Route::prefix('account')->group(function () {
     Route::get('/account/withdraw', function () {
         return view('account.withdraw');
     })->name('account.withdraw');
-
-
 });
-
- 
