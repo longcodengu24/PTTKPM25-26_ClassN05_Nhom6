@@ -51,6 +51,15 @@
                     <li><a href="{{ route('saler.analytics') }}" class="sidebar-link w-full text-left px-4 py-3 rounded-lg text-white inter flex items-center space-x-3">📈 Thống Kê</a></li>
                     <li><a href="{{ route('saler.profile') }}" class="sidebar-link w-full text-left px-4 py-3 rounded-lg text-white inter flex items-center space-x-3">👤 Hồ Sơ</a></li>
                 </ul>
+                
+                <!-- Interface Switch -->
+                <div class="mt-6 pt-6 border-t border-white border-opacity-20">
+                    <h4 class="text-gray-300 text-sm mb-3">🔄 Chuyển Giao Diện</h4>
+                    <a href="{{ route('home') }}" 
+                       class="sidebar-link w-full text-left px-4 py-3 rounded-lg text-white inter flex items-center space-x-3 bg-blue-600 hover:bg-blue-700">
+                        🏠 Giao Diện Khách Hàng
+                    </a>
+                </div>
             </nav>
         </div>
         
@@ -65,6 +74,25 @@
                         <p class="inter text-gray-300">Chào mừng! Quản lý shop nhạc của bạn.</p>
                     </div>
                     <div class="flex items-center space-x-4">
+                        <!-- Quick Switch Button with Tooltip -->
+                        <div class="relative group">
+                            <a href="{{ route('home') }}" 
+                               class="bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg text-white inter flex items-center space-x-2 transition-all">
+                                <span>🏠</span>
+                                <span class="hidden md:inline">Giao Diện Khách</span>
+                            </a>
+                            
+                            <!-- Tooltip -->
+                            <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-800 text-white text-sm rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-50 whitespace-nowrap">
+                                <div class="text-center">
+                                    <div class="font-semibold">🔄 Chuyển sang giao diện khách hàng</div>
+                                    <div class="text-xs text-gray-300">Xem cửa hàng như khách hàng thấy</div>
+                                </div>
+                                <!-- Arrow -->
+                                <div class="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-gray-800"></div>
+                            </div>
+                        </div>
+                        
                         <button class="admin-card px-4 py-2 rounded-lg text-white inter hover:bg-white hover:bg-opacity-20">
                             🔔 Thông báo
                         </button>
