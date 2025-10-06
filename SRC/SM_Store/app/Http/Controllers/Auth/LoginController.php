@@ -49,11 +49,16 @@ class LoginController extends Controller
             ]);
 
 
-            return match ($role) {
-                'admin'    => redirect()->route('admin.dashboard')->with('success', 'Đăng nhập thành công (admin)!'),
-                'saler' => redirect()->route('home')->with('success', 'Đăng nhập thành công (saler)!'),
-                default    => redirect()->route('home')->with('success', 'Đăng nhập thành công!'),
-            };
+return match ($role) {
+    'admin' => redirect()->route('admin.dashboard')->with('success', 'Đăng nhập thành công (admin)!'),
+    'saler' => redirect()->route('saler.dashboard')->with('success', 'Đăng nhập thành công (saler)!'),
+    default => redirect()->route('home')->with('success', 'Đăng nhập thành công!'),
+};
+
+
+
+
+
         } catch (InvalidPassword $e) {
             return back()->withErrors(['password' => 'Sai mật khẩu.']);
         } catch (UserNotFound $e) {
