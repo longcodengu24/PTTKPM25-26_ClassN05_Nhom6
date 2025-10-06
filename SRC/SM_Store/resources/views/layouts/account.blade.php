@@ -36,13 +36,14 @@
         <div class="profile-card rounded-lg p-6 mb-6">
             <div class="flex flex-col md:flex-row items-center gap-6">
                 <!-- Avatar -->
-                <img src="/img/default-avatar.png" alt="Avatar" 
+                <img src="{{ isset($currentUser) ? $currentUser['avatar'] : session('avatar', '/img/default-avatar.png') }}" 
+                     alt="Avatar" 
                      class="w-16 h-16 rounded-full border-2 border-white/30">
                 
                 <!-- User Info -->
                 <div class="flex-1 text-center md:text-left">
-                    <h1 class="orbitron text-xl font-bold text-white">{{ session('name', 'User') }}</h1>
-                    <p class="inter text-gray-300 text-sm">Thành viên từ 2023</p>
+                    <h1 class="orbitron text-xl font-bold text-white">{{ isset($currentUser) ? $currentUser['name'] : session('name', 'User') }}</h1>
+                    <p class="inter text-gray-300 text-sm">{{ isset($currentUser) ? $currentUser['email'] : session('email', '') }}</p>
                 </div>
                 
                 <!-- Coins -->
