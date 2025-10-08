@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Kreait\Firebase\Contract\Auth;
 use Illuminate\Support\Facades\Log;
+use App\Models\Product;
 
 class AccountController extends Controller
 {
@@ -187,13 +188,125 @@ class AccountController extends Controller
     public function sheets()
     {
         $userData = $this->loadUserData();
-        return view('account.sheets', compact('userData'));
+
+        try {
+            // Get current user's UID
+            $uid = session('firebase_uid');
+            $userProducts = collect([]);
+            $totalUserProducts = 0;
+
+            // Debug information
+            Log::info('Debug sheets - UID: ' . ($uid ?? 'NULL'));
+
+            if ($uid) {
+                // Initialize Product model
+                $productModel = new Product();
+
+                // Get products from both collections
+                $productsFromProducts = $productModel->getAllActive(); // From 'products' collection
+
+                // Also get from 'sheets' collection (where saler creates products)
+                $firestoreService = new \App\Services\FirestoreSimple();
+                $sheetsResponse = $firestoreService->listDocuments('sheets');
+                $sheetsFromSheets = [];
+
+                // Parse the Firestore response
+                if (isset($sheetsResponse['documents'])) {
+                    foreach ($sheetsResponse['documents'] as $doc) {
+                        $docData = [];
+
+                        // Extract document ID
+                        $docPath = $doc['name'] ?? '';
+                        $docData['id'] = basename($docPath);
+
+                        // Extract fields
+                        if (isset($doc['fields'])) {
+                            foreach ($doc['fields'] as $field => $value) {
+                                if (isset($value['stringValue'])) {
+                                    $docData[$field] = $value['stringValue'];
+                                } elseif (isset($value['integerValue'])) {
+                                    $docData[$field] = (int) $value['integerValue'];
+                                } elseif (isset($value['booleanValue'])) {
+                                    $docData[$field] = $value['booleanValue'];
+                                } elseif (isset($value['timestampValue'])) {
+                                    $docData[$field] = $value['timestampValue'];
+                                }
+                            }
+                        }
+
+                        $sheetsFromSheets[] = $docData;
+                    }
+                }
+
+                // Combine both collections - convert Collection to array first
+                $allProducts = array_merge(
+                    is_array($productsFromProducts) ? $productsFromProducts : $productsFromProducts->toArray(),
+                    $sheetsFromSheets
+                );
+
+                Log::info('Debug sheets - Total products from both collections: ' . count($allProducts));
+                Log::info('Debug sheets - Products collection: ' . count($productsFromProducts));
+                Log::info('Debug sheets - Sheets collection: ' . count($sheetsFromSheets));
+                Log::info('Debug sheets - Current user UID: ' . $uid);
+                Log::info('Debug sheets - Found user products: ' . $totalUserProducts);
+
+                // Try different field names that might store the user who created the product
+                $userProducts = collect($allProducts)->filter(function ($product) use ($uid) {
+                    $hasCreatedBy = isset($product['created_by']) && $product['created_by'] === $uid;
+                    $hasUserId = isset($product['user_id']) && $product['user_id'] === $uid;
+                    $hasSellerUid = isset($product['seller_uid']) && $product['seller_uid'] === $uid;
+                    $hasOwnerUid = isset($product['owner_uid']) && $product['owner_uid'] === $uid; // For 'sheets' collection
+                    $hasSellerId = isset($product['seller_id']) && $product['seller_id'] === $uid; // For 'products' collection
+
+                    return $hasCreatedBy || $hasUserId || $hasSellerUid || $hasOwnerUid || $hasSellerId;
+                });
+
+                $totalUserProducts = $userProducts->count();
+                Log::info('Debug sheets - Found user products: ' . $totalUserProducts);
+            }
+
+            return view('account.sheets', compact('userData', 'userProducts', 'totalUserProducts'));
+        } catch (\Exception $e) {
+            Log::error('Error fetching user sheets: ' . $e->getMessage());
+            return view('account.sheets', compact('userData'))->with('error', 'Có lỗi xảy ra khi tải danh sách sheet nhạc.');
+        }
     }
 
     public function activity()
     {
         $userData = $this->loadUserData();
-        return view('account.activity', compact('userData'));
+
+        // Lấy thông tin sheet của user để hiển thị trong hoạt động
+        $userSheets = null;
+        try {
+            $uid = session('firebase_uid');
+            if ($uid) {
+                $productModel = new Product();
+                $userProducts = $productModel->getBySeller($uid);
+
+                // Chỉ lấy thông tin cơ bản cần thiết cho hoạt động
+                if ($userProducts && count($userProducts) > 0) {
+                    $userSheets = [];
+                    $productsArray = is_array($userProducts) ? $userProducts : $userProducts->toArray();
+
+                    foreach ($productsArray as $product) {
+                        $userSheets[] = [
+                            'name' => $product['name'] ?? 'Sheet nhạc',
+                            'created_at' => $product['created_at'] ?? null
+                        ];
+                    }
+
+                    // Sắp xếp theo thời gian tạo mới nhất
+                    usort($userSheets, function ($a, $b) {
+                        return strtotime($b['created_at'] ?? '0') - strtotime($a['created_at'] ?? '0');
+                    });
+                }
+            }
+        } catch (\Exception $e) {
+            Log::error('Error loading user sheets for activity: ' . $e->getMessage());
+        }
+
+        return view('account.activity', compact('userData', 'userSheets'));
     }
 
     public function deposit()
@@ -206,5 +319,109 @@ class AccountController extends Controller
     {
         $userData = $this->loadUserData();
         return view('account.withdraw', compact('userData'));
+    }
+
+    public function downloadSheet($id)
+    {
+        try {
+            // Get current user's UID
+            $uid = session('firebase_uid');
+
+            if (!$uid) {
+                return response()->json(['error' => 'Bạn cần đăng nhập để tải file'], 401);
+            }
+
+            // Initialize services
+            $productModel = new Product();
+            $firestoreService = new \App\Services\FirestoreSimple();
+
+            // Find the product in both collections
+            $product = null;
+            $filePath = null;
+
+            // Search in 'products' collection first
+            $productsFromProducts = $productModel->getAllActive();
+            if ($productsFromProducts) {
+                $productsArray = is_array($productsFromProducts) ? $productsFromProducts : $productsFromProducts->toArray();
+                foreach ($productsArray as $prod) {
+                    if (($prod['id'] ?? '') === $id) {
+                        $product = $prod;
+                        $filePath = $prod['file_path'] ?? null;
+                        break;
+                    }
+                }
+            }
+
+            // If not found, search in 'sheets' collection
+            if (!$product) {
+                $sheetsResponse = $firestoreService->listDocuments('sheets');
+                if (isset($sheetsResponse['documents'])) {
+                    foreach ($sheetsResponse['documents'] as $doc) {
+                        $docId = basename($doc['name'] ?? '');
+                        if ($docId === $id) {
+                            $docData = [];
+                            $docData['id'] = $docId;
+
+                            // Extract fields
+                            if (isset($doc['fields'])) {
+                                foreach ($doc['fields'] as $field => $value) {
+                                    if (isset($value['stringValue'])) {
+                                        $docData[$field] = $value['stringValue'];
+                                    }
+                                }
+                            }
+
+                            $product = $docData;
+                            $filePath = $docData['sheet_file_url'] ?? null;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (!$product) {
+                return response()->json(['error' => 'Không tìm thấy sheet nhạc'], 404);
+            }
+
+            // Check if user owns this product (can download their own products)
+            $isOwner = (isset($product['seller_id']) && $product['seller_id'] === $uid) ||
+                (isset($product['owner_uid']) && $product['owner_uid'] === $uid);
+
+            if (!$isOwner) {
+                return response()->json(['error' => 'Bạn không có quyền tải file này'], 403);
+            }
+
+            if (!$filePath) {
+                return response()->json(['error' => 'File không tồn tại'], 404);
+            }
+
+            // Build full file path - files are stored in public directory
+            $fullPath = public_path($filePath);
+
+            // Debug file path
+            Log::info('Download debug - File path from DB: ' . $filePath);
+            Log::info('Download debug - Full path: ' . $fullPath);
+            Log::info('Download debug - File exists: ' . (file_exists($fullPath) ? 'YES' : 'NO'));
+
+            if (!file_exists($fullPath)) {
+                // Try alternative paths
+                $altPath1 = storage_path('app/public/' . $filePath);
+                $altPath2 = storage_path('app/' . $filePath);
+
+                Log::info('Download debug - Alternative path 1 (storage/app/public): ' . $altPath1 . ' - Exists: ' . (file_exists($altPath1) ? 'YES' : 'NO'));
+                Log::info('Download debug - Alternative path 2 (storage/app): ' . $altPath2 . ' - Exists: ' . (file_exists($altPath2) ? 'YES' : 'NO'));
+
+                return response()->json(['error' => 'File không tồn tại trên hệ thống. Path: ' . $fullPath], 404);
+            }
+
+            // Get filename for download
+            $filename = $product['name'] ?? $product['title'] ?? 'sheet-nhac';
+            $filename = preg_replace('/[^A-Za-z0-9\-_\.]/', '_', $filename) . '.txt';
+
+            return response()->download($fullPath, $filename);
+        } catch (\Exception $e) {
+            Log::error('Error downloading sheet: ' . $e->getMessage());
+            return response()->json(['error' => 'Có lỗi xảy ra khi tải file'], 500);
+        }
     }
 }
