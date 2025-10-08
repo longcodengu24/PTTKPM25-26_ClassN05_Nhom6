@@ -1,4 +1,4 @@
-@extends('layouts.saler')
+@extends('layouts.seller')
 
 @section('title', 'Saler Dashboard')
 
@@ -8,7 +8,7 @@
     <div class="flex items-center justify-between mb-6">
         <h2 class="orbitron text-2xl font-bold text-white">📊 Saler Dashboard</h2>
         <span class="text-sm text-gray-300">
-            Xin chào, {{ session('name') }} ({{ session('email') }})
+            Xin chào, {{ session('name', 'User') }}
         </span>
     </div>
 

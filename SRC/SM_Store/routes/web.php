@@ -7,16 +7,45 @@ use App\Http\Controllers\Auth\ForgotPasswordController;
 // use App\Http\Controllers\Admin\PostController;
 use App\Http\Controllers\Admin\UserRoleController;
 use App\Http\Controllers\Saler\SalerController;
+use App\Http\Controllers\Account\AccountController;
+use App\Http\Controllers\ShopController;
+use Kreait\Firebase\Contract\Auth;
 
-Route::get('/', fn() => view('page.home.index'))->name('home');
+Route::get('/', fn() => view('page.home.index'))->name('home')->middleware('load.user');
 
-Route::get('/community', fn() => view('page.community.index'))->name('community.index');
-Route::get('/community/post/{id}', fn($id) => view('page.community.post-detail'))->name('community.post-detail');
+// Debug route để xem Firebase users
+Route::get('/debug-users', function (Auth $auth) {
+    try {
+        $users = $auth->listUsers();
 
-Route::get('/shop', fn() => view('page.shop.index'))->name('shop.index');
-Route::get('/shop/cart', fn() => view('page.shop.cart'))->name('shop.cart');
+        echo "<h2>Firebase Users Debug</h2>";
+        echo "<style>table{border-collapse:collapse;width:100%} th,td{border:1px solid #ddd;padding:8px;text-align:left} th{background-color:#f2f2f2}</style>";
+        echo "<table>";
+        echo "<tr><th>Email</th><th>Display Name</th><th>UID</th><th>Created</th></tr>";
 
-Route::get('/support', fn() => view('page.support.index'))->name('support.index');
+        foreach ($users as $user) {
+            echo "<tr>";
+            echo "<td>" . ($user->email ?? 'N/A') . "</td>";
+            echo "<td><strong>" . ($user->displayName ?? 'N/A') . "</strong></td>";
+            echo "<td>" . $user->uid . "</td>";
+            echo "<td>" . $user->metadata->createdAt->format('Y-m-d H:i:s') . "</td>";
+            echo "</tr>";
+        }
+
+        echo "</table>";
+    } catch (Exception $e) {
+        return "Error: " . $e->getMessage();
+    }
+});
+
+Route::get('/community', fn() => view('page.community.index'))->name('community.index')->middleware('load.user');
+Route::get('/community/post/{id}', fn($id) => view('page.community.post-detail'))->name('community.post-detail')->middleware('load.user');
+
+Route::get('/shop', [ShopController::class, 'index'])->name('shop.index')->middleware('load.user');
+Route::post('/shop/filter', [ShopController::class, 'filter'])->name('shop.filter');
+Route::get('/shop/cart', fn() => view('page.shop.cart'))->name('shop.cart')->middleware('load.user');
+
+Route::get('/support', fn() => view('page.support.index'))->name('support.index')->middleware('load.user');
 
 Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
 Route::post('/login', [LoginController::class, 'login'])->name('login.submit');
@@ -29,7 +58,7 @@ Route::get('/forgot-password', [ForgotPasswordController::class, 'showForm'])->n
 Route::post('/forgot-password', [ForgotPasswordController::class, 'sendResetLink'])->name('password.email');
 
 Route::prefix('saler')
-    ->middleware(['firebase.auth', 'role:saler'])
+    ->middleware(['firebase.auth', 'role:saler', 'load.user'])
     ->group(function () {
 
         // 👇 Thêm dòng này để fix lỗi:
@@ -83,31 +112,14 @@ Route::prefix('admin')
         Route::get('/posts/edit/{id}', fn($id) => view('admin.posts.edit'))->name('admin.posts.edit');
     });
 
-Route::prefix('account')->group(function () {
-    Route::get('/', function () {
-        return view('account.index');
-    })->name('account.index');
-    Route::get('/profile', function () {
-        return view('account.profile');
-    })->name('account.profile');
-    Route::get('/sheets', function () {
-        return view('account.sheets');
-    })->name('account.sheets');
-    Route::get('/posts', function () {
-        return view('account.posts');
-    })->name('account.posts');
-    Route::get('/activity', function () {
-        return view('account.activity');
-    })->name('account.activity');
-    Route::get('/settings', function () {
-        return view('account.settings');
-    })->name('account.settings');
-    // Nạp coin (Deposit) page
-    Route::get('/account/deposit', function () {
-        return view('account.deposit');
-    })->name('account.deposit');
-    // Rút coin (Withdraw) page
-    Route::get('/account/withdraw', function () {
-        return view('account.withdraw');
-    })->name('account.withdraw');
-});
+Route::prefix('account')
+    ->middleware(['firebase.auth', 'load.user'])
+    ->group(function () {
+        Route::get('/', [AccountController::class, 'index'])->name('account.index');
+        Route::get('/sheets', [AccountController::class, 'sheets'])->name('account.sheets');
+        Route::get('/activity', [AccountController::class, 'activity'])->name('account.activity');
+        Route::get('/settings', [AccountController::class, 'settings'])->name('account.settings');
+        Route::put('/update', [AccountController::class, 'updateProfile'])->name('account.update');
+        Route::get('/deposit', [AccountController::class, 'deposit'])->name('account.deposit');
+        Route::get('/withdraw', [AccountController::class, 'withdraw'])->name('account.withdraw');
+    });
