@@ -1,4 +1,4 @@
-@extends('layouts.saler')
+@extends('layouts.seller')
 
 @section('title', 'Chi tiết Đơn Hàng - Saler Dashboard')
 

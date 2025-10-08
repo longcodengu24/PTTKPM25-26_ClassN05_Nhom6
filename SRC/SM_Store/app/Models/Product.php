@@ -89,6 +89,33 @@ class Product
     }
 
     /**
+     * Lấy tất cả sản phẩm active cho shop
+     */
+    public function getAllActive(int $limit = 100)
+    {
+        try {
+            $documents = $this->firestoreService->queryDocuments($this->collection, [
+                'where' => [
+                    ['is_active', '==', true]
+                ],
+                'orderBy' => [
+                    ['created_at', 'desc']
+                ],
+                'limit' => $limit
+            ]);
+
+            return collect(array_map(function ($doc) {
+                $data = $doc['data'];
+                $data['id'] = $doc['id'];
+                return $data;
+            }, $documents));
+        } catch (\Exception $e) {
+            Log::error('Error getting all active products: ' . $e->getMessage());
+            return collect();
+        }
+    }
+
+    /**
      * Tìm sản phẩm theo ID và seller
      */
     public function findBySeller(string $id, string $sellerId)

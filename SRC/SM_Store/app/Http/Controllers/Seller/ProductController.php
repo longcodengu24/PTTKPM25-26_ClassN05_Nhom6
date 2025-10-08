@@ -16,6 +16,31 @@ class ProductController extends Controller
         $this->productModel = new Product();
     }
 
+    /**
+     * Chuẩn hóa YouTube URL về dạng embed
+     */
+    private function normalizeYouTubeUrl($url)
+    {
+        if (empty($url)) {
+            return null;
+        }
+
+        // Các pattern YouTube
+        $patterns = [
+            '/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/',
+            '/youtube\.com\/embed\/([a-zA-Z0-9_-]+)/',
+        ];
+
+        foreach ($patterns as $pattern) {
+            if (preg_match($pattern, $url, $matches)) {
+                $videoId = $matches[1];
+                return "https://www.youtube.com/embed/{$videoId}";
+            }
+        }
+
+        return $url; // Trả về URL gốc nếu không match
+    }
+
     public function index()
     {
         try {
@@ -104,7 +129,7 @@ class ProductController extends Controller
                 'file_path' => $filePath,
                 'image_path' => $imagePath,
                 'price' => $request->input('price'),
-                'youtube_demo_url' => $request->input('youtube_url'),
+                'youtube_demo_url' => $this->normalizeYouTubeUrl($request->input('youtube_url')),
                 'downloads_count' => 0,
                 'is_active' => $request->boolean('is_active', false),
                 'seller_id' => $sellerId
@@ -387,7 +412,7 @@ class ProductController extends Controller
                 'transcribed_by' => $request->input('transcribed_by') ?: 'Seller',
                 'country_region' => $request->input('country_region'),
                 'price' => $request->input('price'),
-                'youtube_demo_url' => $request->input('youtube_url'),
+                'youtube_demo_url' => $this->normalizeYouTubeUrl($request->input('youtube_url')),
                 'is_active' => $request->boolean('is_active', false),
                 'seller_id' => $sellerId,  // 🔥 QUAN TRỌNG: Đảm bảo seller_id không bị mất
                 'downloads_count' => $product['downloads_count'] ?? 0,  // 🔥 Preserve downloads count

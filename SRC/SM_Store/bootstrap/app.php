@@ -7,11 +7,12 @@ use Illuminate\Foundation\Configuration\Middleware;
 
 use App\Http\Middleware\EnsureFirebaseAuthenticated;
 use App\Http\Middleware\RoleMiddleware;
+use App\Http\Middleware\LoadUserData;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
-        web: __DIR__.'/../routes/web.php',
-        commands: __DIR__.'/../routes/console.php',
+        web: __DIR__ . '/../routes/web.php',
+        commands: __DIR__ . '/../routes/console.php',
         health: '/up',
         // nếu có api routes thì mở dòng dưới
         // api: __DIR__.'/../routes/api.php',
@@ -21,6 +22,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'firebase.auth' => EnsureFirebaseAuthenticated::class,
             'role'          => RoleMiddleware::class,
+            'load.user'     => LoadUserData::class,
         ]);
 
         // (tuỳ chọn) nếu muốn gắn middleware vào group 'web' mặc định:
