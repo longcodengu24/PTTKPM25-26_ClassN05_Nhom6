@@ -122,4 +122,5 @@ Route::prefix('account')
         Route::put('/update', [AccountController::class, 'updateProfile'])->name('account.update');
         Route::get('/deposit', [AccountController::class, 'deposit'])->name('account.deposit');
         Route::get('/withdraw', [AccountController::class, 'withdraw'])->name('account.withdraw');
+        Route::get('/download/{id}', [AccountController::class, 'downloadSheet'])->name('account.download');
     });
