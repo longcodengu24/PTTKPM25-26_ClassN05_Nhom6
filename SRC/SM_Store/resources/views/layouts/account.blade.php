@@ -48,11 +48,9 @@
                 
                 <!-- Coins -->
                 <div class="bg-black/20 rounded-lg px-4 py-2">
-                    <div class="flex items-center gap-2">
-                        <span>🪙</span>
-                        <span class="orbitron font-bold text-yellow-400">2,450</span>
-                        <span class="inter text-sm text-gray-300">Coins</span>
-                    </div>
+                    <span class="orbitron text-lg font-bold text-yellow-300">
+                        🪙 {{ number_format(session('coins', 0)) }}
+                    </span>
                 </div>
             </div>
         </div>
