@@ -310,7 +310,9 @@ function openProductDetail(name, author, composer, price, img, video) {
                                         composer: '{{ addslashes($product['transcribed_by'] ?? 'Admin') }}', 
                                         price: '{{ number_format($product['price'] ?? 0) }}đ', 
                                         img: '{{ !empty($product['image_path']) ? asset($product['image_path']) : 'https://via.placeholder.com/320x180?text=' . urlencode($product['name'] ?? 'Product') }}', 
-                                        video: '{{ $product['youtube_demo_url'] ?? 'https://www.youtube.com/embed/dQw4w9WgXcQ' }}' 
+                                        video: '{{ $product['youtube_demo_url'] ?? 'https://www.youtube.com/embed/dQw4w9WgXcQ' }}',
+                                        seller_id: '{{ $product['seller_id'] ?? '' }}',
+                                        product_id: '{{ isset($product['id']) ? $product['id'] : '' }}'
                                     }; showDetail = true;">
                                     Xem
                                 </button>
@@ -354,7 +356,7 @@ function openProductDetail(name, author, composer, price, img, video) {
                         <p class="inter text-gray-700 text-base">Tác giả: <span class="font-semibold" x-text="product.author"></span></p>
                         <p class="inter text-gray-700 text-base">Người soạn: <span class="font-semibold" x-text="product.composer"></span></p>
                         <p class="orbitron text-blue-600 text-xl font-bold">Giá: <span x-text="product.price"></span></p>
-                        <button class="bg-blue-500 text-white px-5 py-2 rounded-lg font-semibold shadow hover:bg-blue-600 transition w-fit mt-2">Thêm vào giỏ hàng</button>
+                        <button class="bg-blue-500 text-white px-5 py-2 rounded-lg font-semibold shadow hover:bg-blue-600 transition w-fit mt-2" onclick="addToCart()">Thêm vào giỏ hàng</button>
                     </div>
                 </div>
                 <div class="mt-4">
@@ -364,5 +366,48 @@ function openProductDetail(name, author, composer, price, img, video) {
                 </div>
             </div>
         </div>
-    </div>
+    <script>
+    function showToast(message, type = 'info') {
+        let toast = document.createElement('div');
+        toast.className = `fixed top-6 right-6 z-[9999] px-6 py-3 rounded-lg shadow-lg text-white font-semibold text-base transition-all duration-300 ${type === 'error' ? 'bg-red-500' : 'bg-blue-500'}`;
+        toast.innerText = message;
+        document.body.appendChild(toast);
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            setTimeout(() => document.body.removeChild(toast), 400);
+        }, 2000);
+    }
+
+    function addToCart() {
+        var shopDiv = document.getElementById('shop');
+        var currentUserId = '{{ $user_id }}';
+        if (shopDiv && shopDiv._x_dataStack) {
+            var p = shopDiv._x_dataStack[0].product;
+            if (!p || !p.name) return;
+            console.log('DEBUG addToCart:', { seller_id: p.seller_id, currentUserId: currentUserId, product: p });
+            if (p.seller_id && currentUserId && p.seller_id == currentUserId) {
+                showToast('Bạn không thể thêm sheet nhạc của chính mình vào giỏ hàng!', 'error');
+                return;
+            }
+            var cart = JSON.parse(localStorage.getItem('cart') || '[]');
+            // Kiểm tra sheet đã có trong giỏ chưa (theo product_id)
+            var exists = cart.some(item => item.product_id === p.product_id);
+            if (exists) {
+                showToast('Sheet nhạc này đã có trong giỏ hàng!', 'error');
+                return;
+            }
+            cart.push({
+                name: p.name,
+                author: p.author,
+                composer: p.composer,
+                price: p.price,
+                img: p.img,
+                seller_id: p.seller_id,
+                product_id: p.product_id
+            });
+            localStorage.setItem('cart', JSON.stringify(cart));
+            showToast('Đã thêm vào giỏ hàng!', 'info');
+        }
+    }
+    </script>
 @endsection

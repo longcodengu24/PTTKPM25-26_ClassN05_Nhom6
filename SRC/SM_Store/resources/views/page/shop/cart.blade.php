@@ -49,23 +49,84 @@
 			<div class="font-semibold text-lg text-white mb-2">Tóm tắt đơn hàng</div>
 			<div class="flex justify-between text-white/80 text-base">
 				<span>Tổng tiền hàng:</span>
-				<span>1,855,000đ</span>
+				<span class="summary-total">0đ</span>
 			</div>
 			<div class="flex justify-between text-white/80 text-base">
 				<span>Giảm giá:</span>
-				<span>- 0đ</span>
+				<span class="summary-discount">- 0đ</span>
 			</div>
 			<div class="flex justify-between text-white/80 text-base pb-2 border-b border-white/30">
 				<span>Tạm tính:</span>
-				<span>1,855,000đ</span>
+				<span class="summary-subtotal">0đ</span>
 			</div>
 			<div class="flex justify-between items-center text-xl font-bold text-yellow-300 mt-2">
 				<span>Tổng tiền:</span>
-				<span>1,855,000đ</span>
+				<span class="summary-final">0đ</span>
 			</div>
 			<button class="w-full mt-4 py-3 rounded-lg bg-gradient-to-r from-blue-500 to-cyan-400 text-white font-bold text-lg shadow hover:from-blue-600 hover:to-cyan-500 transition">TIẾN HÀNH ĐẶT HÀNG</button>
 			<a href="{{ route('shop.index') }}" class="w-full py-3 rounded-lg border border-blue-200 text-blue-700 font-semibold text-lg text-center hover:bg-blue-50 transition">MUA THÊM SẢN PHẨM</a>
 		</div>
 	</div>
 </div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+	function renderCart() {
+		let cart = JSON.parse(localStorage.getItem('cart') || '[]');
+		const tbody = document.querySelector('table tbody');
+		tbody.innerHTML = '';
+		let total = 0;
+		if (cart.length === 0) {
+			tbody.innerHTML = `<tr><td colspan='4' class='text-center py-8 text-white/80'>Giỏ hàng trống.</td></tr>`;
+		} else {
+			cart.forEach((item, idx) => {
+				let price = parseInt((item.price || '').replace(/\D/g, '')) || 0;
+				total += price;
+				let tr = document.createElement('tr');
+				tr.className = 'border-b border-gray-100 transition';
+				tr.innerHTML = `
+					<td class='py-4 px-2 align-top'>
+						<div class='aspect-w-16 aspect-h-9 w-full rounded-lg overflow-hidden border border-gray-200'>
+							<img src='${item.img}' alt='${item.name}' class='object-cover w-full h-full'>
+						</div>
+					</td>
+					<td class='py-4 px-2 align-top'>
+						<div class='font-semibold text-white text-lg'>${item.name}</div>
+						<div class='text-white/80 text-sm'>Tác giả: ${item.author}</div>
+						<div class='text-white/60 text-sm mb-1'>Người soạn: ${item.composer}</div>
+					</td>
+					<td class='py-4 px-2 align-top text-right'>
+						<span class='font-bold text-lg text-yellow-300'>${item.price}</span>
+					</td>
+					<td class='py-4 px-2 align-top text-center'>
+						<button onclick='removeItem(${idx})' class='text-blue-400 hover:text-blue-600 text-2xl transition align-top' title='Xóa sản phẩm'>&times;</button>
+					</td>
+				`;
+				tbody.appendChild(tr);
+			});
+		}
+		// Tóm tắt đơn hàng tự động
+		let discount = 0; // Có thể thay đổi logic giảm giá ở đây
+		let subtotal = total - discount;
+		let summary = {
+			total: total,
+			discount: discount,
+			subtotal: subtotal,
+			final: subtotal // Nếu có phí khác, cộng thêm ở đây
+		};
+		document.querySelector('.summary-total').innerText = summary.total.toLocaleString('vi-VN') + 'đ';
+		document.querySelector('.summary-discount').innerText = '- ' + summary.discount.toLocaleString('vi-VN') + 'đ';
+		document.querySelector('.summary-subtotal').innerText = summary.subtotal.toLocaleString('vi-VN') + 'đ';
+		document.querySelector('.summary-final').innerText = summary.final.toLocaleString('vi-VN') + 'đ';
+	}
+
+	window.removeItem = function(idx) {
+		let cart = JSON.parse(localStorage.getItem('cart') || '[]');
+		cart.splice(idx, 1);
+		localStorage.setItem('cart', JSON.stringify(cart));
+		renderCart();
+	}
+
+	renderCart();
+});
+</script>
 @endsection
