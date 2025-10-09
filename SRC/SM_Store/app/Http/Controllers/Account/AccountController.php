@@ -44,6 +44,7 @@ class AccountController extends Controller
                 'coins' => $coins
             ];
             session($userData);
+            session(['user_id' => $uid]); // Ensure user_id is set in session
 
             return $userData;
         } catch (\Exception $e) {

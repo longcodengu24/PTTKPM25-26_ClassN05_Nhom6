@@ -80,6 +80,10 @@ class ShopController extends Controller
                 'search_term' => $search
             ]);
 
+            $userId = session('user_id', '');
+            if (empty($userId)) {
+                $userId = session('firebase_uid', '');
+            }
             return view('page.shop.index', [
                 'products' => $paginatedProducts,
                 'countries' => $countries,
@@ -87,7 +91,8 @@ class ShopController extends Controller
                 'search' => $search,
                 'totalProducts' => $products->count(),
                 'currentPage' => $currentPage,
-                'perPage' => $perPage
+                'perPage' => $perPage,
+                'user_id' => $userId
             ]);
         } catch (\Exception $e) {
             Log::error('Shop page error: ' . $e->getMessage());
