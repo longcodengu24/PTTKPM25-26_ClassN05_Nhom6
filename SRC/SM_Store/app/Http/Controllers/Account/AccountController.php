@@ -28,17 +28,21 @@ class AccountController extends Controller
                 return null;
             }
 
-            // Lấy thông tin user từ Firebase
+            // Lấy thông tin user từ Firebase Auth
             $user = $this->auth->getUser($uid);
 
-            // Cập nhật session với thông tin mới nhất từ Firebase
+            // Lấy số xu từ Firestore
+            $firestore = new \App\Services\FirestoreSimple();
+            $userDoc = $firestore->getDocument('users', $uid);
+            $coins = $userDoc['coins'] ?? 0;
+
+            // Cập nhật session với thông tin mới nhất từ Firebase và Firestore
             $userData = [
                 'name' => $user->displayName ?? session('name', ''),
                 'email' => $user->email ?? session('email', ''),
-                'avatar' => $user->photoUrl ?? '/img/default-avatar.png'
+                'avatar' => $user->photoUrl ?? '/img/default-avatar.png',
+                'coins' => $coins
             ];
-
-            // Cập nhật session
             session($userData);
 
             return $userData;

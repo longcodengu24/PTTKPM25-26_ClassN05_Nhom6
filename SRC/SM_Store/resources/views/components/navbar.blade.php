@@ -33,16 +33,17 @@
             <!-- Compact User Menu -->
             <div class="flex items-center space-x-2">
                 <!-- Shop Features (only on shop page) -->
-                @if(request()->is('shop'))
+                @if(request()->is('shop') && session()->has('firebase_uid'))
                     <div class="bg-gradient-to-r from-yellow-400 to-yellow-500 text-gray-900 px-2 py-1 rounded-lg font-bold text-xs shadow-md">
                         🪙 {{ number_format(session('coins', 0)) }}
                     </div>
-                    <a href="{{ url('/cart') }}" 
-                       class="bg-white/10 backdrop-blur-sm text-white p-2 rounded-lg hover:bg-white/20 transition-all duration-300 border border-white/20" 
-                       title="Giỏ hàng">
-                        🛒
-                    </a>
                 @endif
+                
+                <a href="{{ url('/cart') }}" 
+                   class="bg-white/10 backdrop-blur-sm text-white p-2 rounded-lg hover:bg-white/20 transition-all duration-300 border border-white/20" 
+                   title="Giỏ hàng">
+                    🛒
+                </a>
                 
                 <!-- User Profile -->
                 <a href="{{ url('/account') }}" 
