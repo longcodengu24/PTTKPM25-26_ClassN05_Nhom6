@@ -39,7 +39,7 @@
                     </div>
                 @endif
                 
-                <a href="{{ url('/cart') }}" 
+                <a href="{{ url('/shop/cart') }}" 
                    class="bg-white/10 backdrop-blur-sm text-white p-2 rounded-lg hover:bg-white/20 transition-all duration-300 border border-white/20" 
                    title="Giỏ hàng">
                     🛒
