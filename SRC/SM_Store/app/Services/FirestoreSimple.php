@@ -84,10 +84,13 @@ class FirestoreSimple
     }
 
     /**
-     * 🔄 Cập nhật document
+     * 🔄 Cập nhật document với validation
      */
     public function updateDocument(string $collection, string $documentId, array $data)
     {
+        // Validation cơ bản
+        $this->validateUpdateData($collection, $data);
+
         $fields = $this->formatFields($data);
 
         $url = "{$this->baseUrl}/{$collection}/{$documentId}?key={$this->apiKey}";
@@ -97,7 +100,49 @@ class FirestoreSimple
             throw new \Exception('Firestore updateDocument error: ' . $res->body());
         }
 
+        // Log data mutation để audit
+        \Illuminate\Support\Facades\Log::info('Firestore document updated', [
+            'collection' => $collection,
+            'document_id' => $documentId,
+            'fields' => array_keys($data),
+            'timestamp' => now()
+        ]);
+
         return $res->json();
+    }
+
+    /**
+     * ✅ Validation cho dữ liệu cập nhật
+     */
+    private function validateUpdateData(string $collection, array $data)
+    {
+        if (empty($data)) {
+            throw new \InvalidArgumentException('Update data cannot be empty');
+        }
+
+        // Validation riêng cho collection users
+        if ($collection === 'users') {
+            $allowedFields = ['avatar', 'coins', 'email', 'name', 'role', 'restored_at', 'restored_by'];
+
+            foreach (array_keys($data) as $field) {
+                if (!in_array($field, $allowedFields)) {
+                    throw new \InvalidArgumentException("Invalid field '{$field}' for users collection");
+                }
+            }
+
+            // Validation kiểu dữ liệu
+            if (isset($data['coins']) && !is_numeric($data['coins'])) {
+                throw new \InvalidArgumentException('Field "coins" must be numeric');
+            }
+
+            if (isset($data['email']) && !filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
+                throw new \InvalidArgumentException('Field "email" must be a valid email address');
+            }
+
+            if (isset($data['role']) && !in_array($data['role'], ['admin', 'saler', 'user'])) {
+                throw new \InvalidArgumentException('Field "role" must be one of: admin, saler, user');
+            }
+        }
     }
 
     /**

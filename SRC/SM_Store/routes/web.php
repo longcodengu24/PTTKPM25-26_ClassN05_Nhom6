@@ -6,7 +6,7 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\ForgotPasswordController;
 // use App\Http\Controllers\Admin\PostController;
 use App\Http\Controllers\Admin\UserRoleController;
-use App\Http\Controllers\Saler\SalerController;
+// SalerController removed - using Seller\ProductController instead
 use App\Http\Controllers\Account\AccountController;
 use App\Http\Controllers\ShopController;
 use Kreait\Firebase\Contract\Auth;

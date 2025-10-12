@@ -18,9 +18,9 @@ class AccountController extends Controller
     }
 
     /**
-     * Load user data from Firebase and update session
+     * Get user data (prefer from session, updated by middleware)
      */
-    private function loadUserData()
+    private function getUserData()
     {
         try {
             $uid = session('firebase_uid');
@@ -28,34 +28,30 @@ class AccountController extends Controller
                 return null;
             }
 
-            // Lấy thông tin user từ Firebase Auth
-            $user = $this->auth->getUser($uid);
-
-            // Lấy số xu từ Firestore
+            // Lấy coins từ Firestore (dữ liệu quan trọng không cache trong session)
             $firestore = new \App\Services\FirestoreSimple();
             $userDoc = $firestore->getDocument('users', $uid);
             $coins = $userDoc['coins'] ?? 0;
 
-            // Cập nhật session với thông tin mới nhất từ Firebase và Firestore
+            // Sử dụng dữ liệu từ session (đã được cập nhật bởi getUserData middleware)
             $userData = [
-                'name' => $user->displayName ?? session('name', ''),
-                'email' => $user->email ?? session('email', ''),
-                'avatar' => $user->photoUrl ?? '/img/default-avatar.png',
-                'coins' => $coins
+                'name' => session('name', ''),
+                'email' => session('email', ''),
+                'avatar' => session('avatar', '/img/default-avatar.png'),
+                'coins' => $coins, // Chỉ coins cần query real-time
+                'uid' => $uid
             ];
-            session($userData);
-            session(['user_id' => $uid]); // Ensure user_id is set in session
 
             return $userData;
         } catch (\Exception $e) {
-            Log::error('Error loading user data: ' . $e->getMessage());
+            Log::error('Error getting user data: ' . $e->getMessage());
             return null;
         }
     }
 
     public function settings()
     {
-        $userData = $this->loadUserData();
+        $userData = $this->getUserData();
 
         if (!$userData) {
             return redirect()->route('auth.login')->withErrors(['error' => 'Vui lòng đăng nhập.']);
@@ -186,13 +182,13 @@ class AccountController extends Controller
 
     public function index()
     {
-        $userData = $this->loadUserData();
+        $userData = $this->getUserData();
         return view('account.index', compact('userData'));
     }
 
     public function sheets()
     {
-        $userData = $this->loadUserData();
+        $userData = $this->getUserData();
 
         try {
             // Get current user's UID
@@ -207,67 +203,29 @@ class AccountController extends Controller
                 // Initialize Product model
                 $productModel = new Product();
 
-                // Get products from both collections
-                $productsFromProducts = $productModel->getAllActive(); // From 'products' collection
+                // Get products from products collection only
+                $allProducts = $productModel->getAllActive();
 
-                // Also get from 'sheets' collection (where saler creates products)
-                $firestoreService = new \App\Services\FirestoreSimple();
-                $sheetsResponse = $firestoreService->listDocuments('sheets');
-                $sheetsFromSheets = [];
-
-                // Parse the Firestore response
-                if (isset($sheetsResponse['documents'])) {
-                    foreach ($sheetsResponse['documents'] as $doc) {
-                        $docData = [];
-
-                        // Extract document ID
-                        $docPath = $doc['name'] ?? '';
-                        $docData['id'] = basename($docPath);
-
-                        // Extract fields
-                        if (isset($doc['fields'])) {
-                            foreach ($doc['fields'] as $field => $value) {
-                                if (isset($value['stringValue'])) {
-                                    $docData[$field] = $value['stringValue'];
-                                } elseif (isset($value['integerValue'])) {
-                                    $docData[$field] = (int) $value['integerValue'];
-                                } elseif (isset($value['booleanValue'])) {
-                                    $docData[$field] = $value['booleanValue'];
-                                } elseif (isset($value['timestampValue'])) {
-                                    $docData[$field] = $value['timestampValue'];
-                                }
-                            }
-                        }
-
-                        $sheetsFromSheets[] = $docData;
-                    }
+                // Convert Collection to array if needed
+                if (!is_array($allProducts)) {
+                    $allProducts = $allProducts->toArray();
                 }
 
-                // Combine both collections - convert Collection to array first
-                $allProducts = array_merge(
-                    is_array($productsFromProducts) ? $productsFromProducts : $productsFromProducts->toArray(),
-                    $sheetsFromSheets
-                );
+                Log::info('Debug products - Total products: ' . count($allProducts));
+                Log::info('Debug products - Current user UID: ' . $uid);
 
-                Log::info('Debug sheets - Total products from both collections: ' . count($allProducts));
-                Log::info('Debug sheets - Products collection: ' . count($productsFromProducts));
-                Log::info('Debug sheets - Sheets collection: ' . count($sheetsFromSheets));
-                Log::info('Debug sheets - Current user UID: ' . $uid);
-                Log::info('Debug sheets - Found user products: ' . $totalUserProducts);
-
-                // Try different field names that might store the user who created the product
+                // Filter products by seller_id
                 $userProducts = collect($allProducts)->filter(function ($product) use ($uid) {
                     $hasCreatedBy = isset($product['created_by']) && $product['created_by'] === $uid;
                     $hasUserId = isset($product['user_id']) && $product['user_id'] === $uid;
                     $hasSellerUid = isset($product['seller_uid']) && $product['seller_uid'] === $uid;
-                    $hasOwnerUid = isset($product['owner_uid']) && $product['owner_uid'] === $uid; // For 'sheets' collection
-                    $hasSellerId = isset($product['seller_id']) && $product['seller_id'] === $uid; // For 'products' collection
+                    $hasSellerId = isset($product['seller_id']) && $product['seller_id'] === $uid;
 
-                    return $hasCreatedBy || $hasUserId || $hasSellerUid || $hasOwnerUid || $hasSellerId;
+                    return $hasCreatedBy || $hasUserId || $hasSellerUid || $hasSellerId;
                 });
 
                 $totalUserProducts = $userProducts->count();
-                Log::info('Debug sheets - Found user products: ' . $totalUserProducts);
+                Log::info('Debug products - Found user products: ' . $totalUserProducts);
             }
 
             return view('account.sheets', compact('userData', 'userProducts', 'totalUserProducts'));
@@ -279,7 +237,7 @@ class AccountController extends Controller
 
     public function activity()
     {
-        $userData = $this->loadUserData();
+        $userData = $this->getUserData();
 
         // Lấy thông tin sheet của user để hiển thị trong hoạt động
         $userSheets = null;
@@ -316,13 +274,13 @@ class AccountController extends Controller
 
     public function deposit()
     {
-        $userData = $this->loadUserData();
+        $userData = $this->getUserData();
         return view('account.deposit', compact('userData'));
     }
 
     public function withdraw()
     {
-        $userData = $this->loadUserData();
+        $userData = $this->getUserData();
         return view('account.withdraw', compact('userData'));
     }
 
@@ -340,14 +298,14 @@ class AccountController extends Controller
             $productModel = new Product();
             $firestoreService = new \App\Services\FirestoreSimple();
 
-            // Find the product in both collections
+            // Find the product in products collection
             $product = null;
             $filePath = null;
 
-            // Search in 'products' collection first
-            $productsFromProducts = $productModel->getAllActive();
-            if ($productsFromProducts) {
-                $productsArray = is_array($productsFromProducts) ? $productsFromProducts : $productsFromProducts->toArray();
+            // Search in 'products' collection
+            $allProducts = $productModel->getAllActive();
+            if ($allProducts) {
+                $productsArray = is_array($allProducts) ? $allProducts : $allProducts->toArray();
                 foreach ($productsArray as $prod) {
                     if (($prod['id'] ?? '') === $id) {
                         $product = $prod;
@@ -357,40 +315,12 @@ class AccountController extends Controller
                 }
             }
 
-            // If not found, search in 'sheets' collection
-            if (!$product) {
-                $sheetsResponse = $firestoreService->listDocuments('sheets');
-                if (isset($sheetsResponse['documents'])) {
-                    foreach ($sheetsResponse['documents'] as $doc) {
-                        $docId = basename($doc['name'] ?? '');
-                        if ($docId === $id) {
-                            $docData = [];
-                            $docData['id'] = $docId;
-
-                            // Extract fields
-                            if (isset($doc['fields'])) {
-                                foreach ($doc['fields'] as $field => $value) {
-                                    if (isset($value['stringValue'])) {
-                                        $docData[$field] = $value['stringValue'];
-                                    }
-                                }
-                            }
-
-                            $product = $docData;
-                            $filePath = $docData['sheet_file_url'] ?? null;
-                            break;
-                        }
-                    }
-                }
-            }
-
             if (!$product) {
                 return response()->json(['error' => 'Không tìm thấy sheet nhạc'], 404);
             }
 
             // Check if user owns this product (can download their own products)
-            $isOwner = (isset($product['seller_id']) && $product['seller_id'] === $uid) ||
-                (isset($product['owner_uid']) && $product['owner_uid'] === $uid);
+            $isOwner = isset($product['seller_id']) && $product['seller_id'] === $uid;
 
             if (!$isOwner) {
                 return response()->json(['error' => 'Bạn không có quyền tải file này'], 403);

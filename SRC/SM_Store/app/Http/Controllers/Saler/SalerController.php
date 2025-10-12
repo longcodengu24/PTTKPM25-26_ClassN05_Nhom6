@@ -3,34 +3,43 @@
 namespace App\Http\Controllers\Saler;
 
 use App\Http\Controllers\Controller;
-use App\Services\FirestoreSimple;
+use App\Models\Product;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class SalerController extends Controller
 {
-    // Hiển thị danh sách sheet nhạc
-    public function index(FirestoreSimple $fs)
+    // Hiển thị danh sách products
+    public function index()
     {
-        $resp = $fs->listDocuments('sheets', 100);
-        $rows = [];
+        $productModel = new Product();
+        $allProducts = $productModel->getAllActive();
 
-        foreach (($resp['documents'] ?? []) as $doc) {
-            $id = basename($doc['name']);
-            $f  = $doc['fields'] ?? [];
+        // Convert to array if needed
+        $products = is_array($allProducts) ? $allProducts : $allProducts->toArray();
 
-            $rows[] = [
-                'id'                => $id,
-                'title'             => $f['title']['stringValue'] ?? '---',
-                'composer'          => $f['composer']['stringValue'] ?? '---',
-                'genre'             => $f['genre']['stringValue'] ?? '---',
-                'difficulty'        => $f['difficulty']['stringValue'] ?? '---',
-                'price'             => isset($f['price']['integerValue']) ? (int)$f['price']['integerValue'] : 0,
-                'status'            => $f['status']['stringValue'] ?? '---',
-                'preview_image_url' => $f['preview_image_url']['stringValue'] ?? '',
-            ];
+        // Filter products by current seller
+        $sellerUid = session('firebase_uid');
+        $sellerProducts = [];
+
+        if ($sellerUid) {
+            foreach ($products as $product) {
+                if (isset($product['seller_id']) && $product['seller_id'] === $sellerUid) {
+                    $sellerProducts[] = [
+                        'id' => $product['id'] ?? '',
+                        'title' => $product['name'] ?? '---',
+                        'composer' => $product['author'] ?? '---',
+                        'genre' => $product['genre'] ?? '---',
+                        'difficulty' => $product['difficulty'] ?? '---',
+                        'price' => $product['price'] ?? 0,
+                        'status' => $product['is_active'] ? 'published' : 'draft',
+                        'preview_image_url' => $product['image_path'] ?? '',
+                    ];
+                }
+            }
         }
 
-        return view('saler.products.index', ['sheets' => $rows]);
+        return view('saler.products.index', ['sheets' => $sellerProducts]);
     }
 
     // Hiển thị form thêm mới
@@ -39,102 +48,173 @@ class SalerController extends Controller
         return view('saler.products.create');
     }
 
-    // Xử lý lưu vào Firestore
-    public function store(Request $req, FirestoreSimple $fs)
+    // Xử lý lưu product mới
+    public function store(Request $req)
     {
         $data = $req->validate([
             'title'          => 'required|string|max:150',
             'composer'       => 'required|string|max:150',
-            'genre'          => 'required|string|max:50',
-            'difficulty'     => 'required|string|max:50',
+            'genre'          => 'nullable|string|max:50',
+            'difficulty'     => 'nullable|string|max:50',
             'description'    => 'nullable|string',
             'price'          => 'required|integer|min:0',
-            'allow_discount' => 'sometimes|accepted',
-            'discount_price' => 'nullable|integer|min:0',
-            'status'         => 'required|in:draft,published,scheduled',
-            'featured'       => 'sometimes|accepted',
-            'allow_comments' => 'sometimes|accepted',
+            'country_region' => 'nullable|string|max:100',
+            'youtube_demo_url' => 'nullable|url',
         ]);
 
-        // Nếu không bật giảm giá thì set = 0
-        if (empty($data['allow_discount'])) {
-            $data['discount_price'] = 0;
-        }
-
-        $payload = [
-            'title'          => $data['title'],
-            'composer'       => $data['composer'],
-            'genre'          => $data['genre'],
-            'difficulty'     => $data['difficulty'],
-            'description'    => $data['description'] ?? '',
-            'price'          => (int) $data['price'],
-            'allow_discount' => isset($data['allow_discount']),
-            'discount_price' => (int) ($data['discount_price'] ?? 0),
-            'status'         => $data['status'],
-            'featured'       => isset($data['featured']),
-            'allow_comments' => isset($data['allow_comments']),
-            'preview_image_url' => '',
-            'sheet_file_url'    => '',
-            'owner_uid'    => session('firebase_uid'),
-            'created_at'   => now()->toAtomString(),
-            'updated_at'   => now()->toAtomString(),
+        $productData = [
+            'name' => $data['title'],
+            'author' => $data['composer'],
+            'transcribed_by' => 'Saler: ' . session('firebase_uid'),
+            'country_region' => $data['country_region'] ?? 'Vietnam',
+            'file_path' => '', // Will be updated when file is uploaded
+            'image_path' => '', // Will be updated when image is uploaded
+            'price' => (int) $data['price'],
+            'youtube_demo_url' => $data['youtube_demo_url'] ?? '',
+            'downloads_count' => 0,
+            'is_active' => true,
+            'seller_id' => session('firebase_uid'),
+            'genre' => $data['genre'] ?? '',
+            'difficulty' => $data['difficulty'] ?? '',
+            'description' => $data['description'] ?? ''
         ];
 
-        $resp = $fs->createDocument('sheets', $payload);
-        $id = isset($resp['name']) ? basename($resp['name']) : null;
+        try {
+            $productModel = new Product();
+            $newProduct = $productModel->create($productData);
 
-        return redirect()->route('saler.products')
-            ->with('success', 'Đã thêm sheet nhạc ' . ($id ? "(#{$id})" : 'thành công!'));
+            return redirect()->route('saler.products')
+                ->with('success', 'Đã thêm product thành công: ' . $productData['name']);
+        } catch (\Exception $e) {
+            Log::error('Error creating product: ' . $e->getMessage());
+            return back()->withInput()->with('error', 'Có lỗi xảy ra khi tạo product');
+        }
     }
 
     // Hiển thị form sửa
-    public function edit($id, FirestoreSimple $fs)
+    public function edit($id)
     {
-        $resp = $fs->listDocuments('sheets', 100);
-        
-        // Tìm document theo ID
-        foreach (($resp['documents'] ?? []) as $doc) {
-            $docId = basename($doc['name']);
-            if ($docId === $id) {
-                $f = $doc['fields'] ?? [];
-                $sheet = [
-                    'id'                => $docId,
-                    'title'             => $f['title']['stringValue'] ?? '',
-                    'composer'          => $f['composer']['stringValue'] ?? '',
-                    'genre'             => $f['genre']['stringValue'] ?? '',
-                    'difficulty'        => $f['difficulty']['stringValue'] ?? '',
-                    'description'       => $f['description']['stringValue'] ?? '',
-                    'price'             => isset($f['price']['integerValue']) ? (int)$f['price']['integerValue'] : 0,
-                    'allow_discount'    => isset($f['allow_discount']['booleanValue']) ? $f['allow_discount']['booleanValue'] : false,
-                    'discount_price'    => isset($f['discount_price']['integerValue']) ? (int)$f['discount_price']['integerValue'] : 0,
-                    'status'            => $f['status']['stringValue'] ?? 'draft',
-                    'featured'          => isset($f['featured']['booleanValue']) ? $f['featured']['booleanValue'] : false,
-                    'allow_comments'    => isset($f['allow_comments']['booleanValue']) ? $f['allow_comments']['booleanValue'] : false,
-                    'preview_image_url' => $f['preview_image_url']['stringValue'] ?? '',
-                ];
-                
-                return view('saler.products.edit', ['sheet' => $sheet]);
+        try {
+            $productModel = new Product();
+            $allProducts = $productModel->getAllActive();
+            $productsArray = is_array($allProducts) ? $allProducts : $allProducts->toArray();
+
+            // Find the product by ID
+            $product = null;
+            foreach ($productsArray as $prod) {
+                if (($prod['id'] ?? '') === $id) {
+                    $product = $prod;
+                    break;
+                }
             }
+
+            if (!$product) {
+                return redirect()->route('saler.products')->with('error', 'Không tìm thấy product');
+            }
+
+            // Check if current user owns this product
+            $sellerUid = session('firebase_uid');
+            if (($product['seller_id'] ?? '') !== $sellerUid) {
+                return redirect()->route('saler.products')->with('error', 'Bạn không có quyền chỉnh sửa product này');
+            }
+
+            // Convert to format expected by view
+            $sheet = [
+                'id' => $product['id'] ?? '',
+                'title' => $product['name'] ?? '',
+                'composer' => $product['author'] ?? '',
+                'genre' => $product['genre'] ?? '',
+                'difficulty' => $product['difficulty'] ?? '',
+                'description' => $product['description'] ?? '',
+                'price' => $product['price'] ?? 0,
+                'country_region' => $product['country_region'] ?? '',
+                'youtube_demo_url' => $product['youtube_demo_url'] ?? '',
+                'status' => $product['is_active'] ? 'published' : 'draft',
+                'preview_image_url' => $product['image_path'] ?? '',
+            ];
+
+            return view('saler.products.edit', ['sheet' => $sheet]);
+        } catch (\Exception $e) {
+            Log::error('Error editing product: ' . $e->getMessage());
+            return redirect()->route('saler.products')->with('error', 'Có lỗi xảy ra');
         }
-        
-        return redirect()->route('saler.products')->with('error', 'Không tìm thấy sheet nhạc');
     }
 
-    // Cập nhật sheet nhạc
+    // Cập nhật product
     public function update($id, Request $request)
     {
-        // Tạm thời chỉ redirect với thông báo
-        // Sẽ implement update functionality sau
-        return redirect()->route('saler.products')
-            ->with('success', "Đã cập nhật sheet #{$id} (tạm thời)");
+        $data = $request->validate([
+            'title'          => 'required|string|max:150',
+            'composer'       => 'required|string|max:150',
+            'genre'          => 'nullable|string|max:50',
+            'difficulty'     => 'nullable|string|max:50',
+            'description'    => 'nullable|string',
+            'price'          => 'required|integer|min:0',
+            'country_region' => 'nullable|string|max:100',
+            'youtube_demo_url' => 'nullable|url',
+            'status'         => 'required|in:draft,published',
+        ]);
+
+        try {
+            $sellerUid = session('firebase_uid');
+            $productModel = new Product();
+            $updateData = [
+                'name' => $data['title'],
+                'author' => $data['composer'],
+                'genre' => $data['genre'] ?? '',
+                'difficulty' => $data['difficulty'] ?? '',
+                'description' => $data['description'] ?? '',
+                'price' => (int) $data['price'],
+                'country_region' => $data['country_region'] ?? 'Vietnam',
+                'youtube_demo_url' => $data['youtube_demo_url'] ?? '',
+                'is_active' => $data['status'] === 'published',
+                'updated_at' => now()->toISOString(),
+            ];
+
+            $productModel->update($id, $updateData, $sellerUid);
+
+            return redirect()->route('saler.products')
+                ->with('success', "Đã cập nhật product #{$id} thành công");
+        } catch (\Exception $e) {
+            Log::error('Error updating product: ' . $e->getMessage());
+            return back()->withInput()->with('error', 'Có lỗi xảy ra khi cập nhật product');
+        }
     }
 
-    // Xóa sheet nhạc
+    // Xóa product
     public function destroy($id)
     {
-        // Tạm thời chỉ redirect với thông báo
-        // Sẽ implement delete functionality sau
-        return redirect()->route('saler.products')
-            ->with('success', "Đã xóa sheet #{$id} (tạm thời)");
+        try {
+            $productModel = new Product();
+
+            // Check if current user owns this product
+            $allProducts = $productModel->getAllActive();
+            $productsArray = is_array($allProducts) ? $allProducts : $allProducts->toArray();
+
+            $product = null;
+            foreach ($productsArray as $prod) {
+                if (($prod['id'] ?? '') === $id) {
+                    $product = $prod;
+                    break;
+                }
+            }
+
+            if (!$product) {
+                return redirect()->route('saler.products')->with('error', 'Không tìm thấy product');
+            }
+
+            $sellerUid = session('firebase_uid');
+            if (($product['seller_id'] ?? '') !== $sellerUid) {
+                return redirect()->route('saler.products')->with('error', 'Bạn không có quyền xóa product này');
+            }
+
+            $productModel->delete($id, $sellerUid);
+
+            return redirect()->route('saler.products')
+                ->with('success', "Đã xóa product #{$id} thành công");
+        } catch (\Exception $e) {
+            Log::error('Error deleting product: ' . $e->getMessage());
+            return redirect()->route('saler.products')->with('error', 'Có lỗi xảy ra khi xóa product');
+        }
     }
 }
