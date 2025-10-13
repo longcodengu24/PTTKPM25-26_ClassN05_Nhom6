@@ -35,7 +35,7 @@
                 <!-- Shop Features (only on shop page) -->
                 @if(request()->is('shop') && session()->has('firebase_uid'))
                     <div class="bg-gradient-to-r from-yellow-400 to-yellow-500 text-gray-900 px-2 py-1 rounded-lg font-bold text-xs shadow-md">
-                        🪙 {{ number_format(session('coins', 0)) }}
+                        🪙 {{ number_format(isset($currentUser) ? $currentUser['coins'] : session('coins', 0)) }}
                     </div>
                 @endif
                 

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Saler;
 
 use App\Http\Controllers\Controller;
 use App\Models\Product;
+use App\Services\ActivityService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -82,6 +83,32 @@ class SalerController extends Controller
         try {
             $productModel = new Product();
             $newProduct = $productModel->create($productData);
+
+            // 📢 Tạo thông báo activity cho seller
+            if ($newProduct) {
+                try {
+                    $activityService = new ActivityService();
+                    $activityService->createActivity(
+                        session('firebase_uid'),
+                        'upload',
+                        'Đã tải lên sheet nhạc "' . $productData['name'] . '"',
+                        [
+                            'product_name' => $productData['name'],
+                            'price' => $productData['price'],
+                            'composer' => $productData['author'],
+                            'amount' => '+0 xu' // Upload doesn't give coins immediately
+                        ]
+                    );
+
+                    Log::info('Activity notification created for product upload', [
+                        'seller_uid' => session('firebase_uid'),
+                        'product_name' => $productData['name']
+                    ]);
+                } catch (\Exception $activityError) {
+                    Log::error('Failed to create activity notification: ' . $activityError->getMessage());
+                    // Don't fail the whole process if activity creation fails
+                }
+            }
 
             return redirect()->route('saler.products')
                 ->with('success', 'Đã thêm product thành công: ' . $productData['name']);

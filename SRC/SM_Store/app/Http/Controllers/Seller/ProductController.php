@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Seller;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Product;
+use App\Services\ActivityService;
 use Illuminate\Support\Facades\Log;
 
 class ProductController extends Controller
@@ -121,7 +122,7 @@ class ProductController extends Controller
             $sellerId = session('firebase_uid') ?? 'demo_seller_id';
 
             // Tạo sản phẩm mới với Firebase (giữ nguyên tên cột)
-            $this->productModel->create([
+            $productData = [
                 'name' => $request->input('name'),
                 'author' => $request->input('author') ?: 'Chưa xác định',
                 'transcribed_by' => $request->input('transcribed_by') ?: 'Seller',
@@ -131,8 +132,31 @@ class ProductController extends Controller
                 'price' => $request->input('price'),
                 'youtube_demo_url' => $this->normalizeYouTubeUrl($request->input('youtube_url')),
                 'downloads_count' => 0,
+                'sold_count' => 0,
                 'is_active' => $request->boolean('is_active', false),
                 'seller_id' => $sellerId
+            ];
+
+            $product = $this->productModel->create($productData);
+
+            // Tạo activity record cho việc upload sheet
+            $activityService = new ActivityService();
+            $activityService->createActivity(
+                $sellerId,
+                'upload',
+                "Tải lên sheet nhạc '{$request->input('name')}' - Giá: " . number_format($request->input('price')) . "đ",
+                [
+                    'product_id' => $product['id'] ?? null,
+                    'product_name' => $request->input('name'),
+                    'price' => $request->input('price'),
+                    'country_region' => $request->input('country_region')
+                ]
+            );
+
+            Log::info('Sheet uploaded successfully with activity', [
+                'seller_id' => $sellerId,
+                'product_name' => $request->input('name'),
+                'activity_created' => 'yes'
             ]);
 
             return redirect()->route('saler.products.index')
@@ -416,6 +440,7 @@ class ProductController extends Controller
                 'is_active' => $request->boolean('is_active', false),
                 'seller_id' => $sellerId,  // 🔥 QUAN TRỌNG: Đảm bảo seller_id không bị mất
                 'downloads_count' => $product['downloads_count'] ?? 0,  // 🔥 Preserve downloads count
+                'sold_count' => $product['sold_count'] ?? 0,  // 🔥 Preserve sold count
                 'file_path' => $product['file_path'] ?? '',  // 🔥 Preserve file path (sẽ được update nếu có file mới)
                 'image_path' => $product['image_path'] ?? null  // 🔥 Preserve image path (sẽ được update nếu có ảnh mới)
             ];
@@ -466,6 +491,20 @@ class ProductController extends Controller
 
             $this->productModel->update($id, $updateData, $sellerId);
 
+            // Tạo activity record cho việc cập nhật sheet
+            $activityService = new ActivityService();
+            $activityService->createActivity(
+                $sellerId,
+                'update',
+                "Cập nhật sheet nhạc '{$updateData['name']}' - Giá: " . number_format($updateData['price']) . "đ",
+                [
+                    'product_id' => $id,
+                    'product_name' => $updateData['name'],
+                    'price' => $updateData['price'],
+                    'country_region' => $updateData['country_region'] ?? null
+                ]
+            );
+
             return redirect()->route('saler.products.index')
                 ->with('success', 'Đã cập nhật bản nhạc "' . $updateData['name'] . '" thành công!');
         } catch (\Exception $e) {
@@ -504,6 +543,20 @@ class ProductController extends Controller
 
             // Xóa bản ghi trong Firebase
             $this->productModel->delete($id, $sellerId);
+
+            // Tạo activity record cho việc xóa sheet
+            $activityService = new ActivityService();
+            $activityService->createActivity(
+                $sellerId,
+                'delete',
+                "Xóa sheet nhạc '{$product['name']}' - Giá: " . number_format($product['price'] ?? 0) . "đ",
+                [
+                    'product_id' => $id,
+                    'product_name' => $product['name'],
+                    'price' => $product['price'] ?? 0,
+                    'country_region' => $product['country_region'] ?? null
+                ]
+            );
 
             return redirect()->route('saler.products.index')
                 ->with('success', 'Đã xóa bản nhạc "' . ($product['name'] ?? 'sản phẩm') . '" thành công!');

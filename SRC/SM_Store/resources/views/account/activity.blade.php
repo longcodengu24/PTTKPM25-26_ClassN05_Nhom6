@@ -4,18 +4,40 @@
                 <h3 class="orbitron text-xl font-bold text-white mb-6">Hoạt Động Gần Đây</h3>
                 
                 <div class="space-y-4">
-                    <!-- Hiển thị hoạt động tải sheet thực từ database (nếu có) -->
-                    @if(isset($userSheets) && count($userSheets) > 0)
-                        @foreach($userSheets as $sheet)
+                    <!-- Hiển thị hoạt động thực từ database -->
+                    @if(isset($activities) && count($activities) > 0)
+                        @foreach($activities as $activity)
                             <div class="profile-card rounded-xl p-6 flex items-center space-x-4">
-                                <div class="text-2xl">📤</div>
-                                <div class="flex-1">
-                                    <h4 class="inter font-semibold text-white">Tải lên sheet nhạc mới</h4>
-                                    <p class="inter text-gray-300 text-sm">"{{ $sheet['name'] }}" • {{ \Carbon\Carbon::parse($sheet['created_at'])->diffForHumans() }}</p>
+                                <div class="text-2xl">
+                                    @if($activity['type'] === 'purchase')
+                                        🛒
+                                    @elseif($activity['type'] === 'sale')
+                                        💰
+                                    @elseif($activity['type'] === 'upload')
+                                        📤
+                                    @elseif($activity['type'] === 'update')
+                                        ✏️
+                                    @elseif($activity['type'] === 'delete')
+                                        🗑️
+                                    @else
+                                        📋
+                                    @endif
                                 </div>
-                                <div class="text-gray-300 font-bold">+0 🪙</div>
+                                <div class="flex-1">
+                                    <h4 class="inter font-semibold text-white">{{ $activity['title'] ?? 'Hoạt động' }}</h4>
+                                    <p class="inter text-gray-300 text-sm">{{ $activity['description'] ?? '' }} • {{ \Carbon\Carbon::parse($activity['created_at'])->diffForHumans() }}</p>
+                                </div>
+                                <div class="text-gray-300 font-bold">{{ $activity['amount'] ?? '+0' }} 🪙</div>
                             </div>
                         @endforeach
+                    @endif
+
+
+
+                    @if(!isset($activities) || count($activities) === 0)
+                        <div class="profile-card rounded-xl p-6 text-center">
+                            <p class="inter text-gray-300">Chưa có hoạt động nào gần đây</p>
+                        </div>
                     @endif
 
                     <!-- Dữ liệu mẫu (giữ nguyên để demo các tính năng khác) -->

@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\UserRoleController;
 // SalerController removed - using Seller\ProductController instead
 use App\Http\Controllers\Account\AccountController;
 use App\Http\Controllers\ShopController;
+use App\Http\Controllers\CheckoutController;
 use Kreait\Firebase\Contract\Auth;
 
 Route::get('/', fn() => view('page.home.index'))->name('home')->middleware('load.user');
@@ -44,8 +45,12 @@ Route::get('/community/post/{id}', fn($id) => view('page.community.post-detail')
 Route::get('/shop', [ShopController::class, 'index'])->name('shop.index')->middleware('load.user');
 Route::post('/shop/filter', [ShopController::class, 'filter'])->name('shop.filter');
 Route::get('/shop/cart', fn() => view('page.shop.cart'))->name('shop.cart')->middleware('load.user');
+Route::post('/shop/checkout', [CheckoutController::class, 'processCheckout'])->name('shop.checkout')->middleware(['firebase.auth', 'load.user']);
 
 Route::get('/support', fn() => view('page.support.index'))->name('support.index')->middleware('load.user');
+
+// Test route for purchase validation
+Route::get('/test/purchase-validation', fn() => view('test.purchase-validation'))->name('test.purchase-validation')->middleware('load.user');
 
 Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
 Route::post('/login', [LoginController::class, 'login'])->name('login.submit');

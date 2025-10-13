@@ -63,7 +63,7 @@
 				<span>Tổng tiền:</span>
 				<span class="summary-final">0đ</span>
 			</div>
-			<button class="w-full mt-4 py-3 rounded-lg bg-gradient-to-r from-blue-500 to-cyan-400 text-white font-bold text-lg shadow hover:from-blue-600 hover:to-cyan-500 transition">TIẾN HÀNH ĐẶT HÀNG</button>
+			<button onclick="processCheckout()" class="w-full mt-4 py-3 rounded-lg bg-gradient-to-r from-blue-500 to-cyan-400 text-white font-bold text-lg shadow hover:from-blue-600 hover:to-cyan-500 transition">TIẾN HÀNH ĐẶT HÀNG</button>
 			<a href="{{ route('shop.index') }}" class="w-full py-3 rounded-lg border border-blue-200 text-blue-700 font-semibold text-lg text-center hover:bg-blue-50 transition">MUA THÊM SẢN PHẨM</a>
 		</div>
 	</div>
@@ -127,6 +127,97 @@ document.addEventListener('DOMContentLoaded', function() {
 	}
 
 	renderCart();
+
+	// Xử lý checkout
+	window.processCheckout = function() {
+		let cart = JSON.parse(localStorage.getItem('cart') || '[]');
+		
+		if (cart.length === 0) {
+			showToast('Giỏ hàng trống!', 'error');
+			return;
+		}
+
+		// Confirm purchase
+		let totalAmount = 0;
+		cart.forEach(item => {
+			let price = parseInt((item.price || '').replace(/\D/g, '')) || 0;
+			totalAmount += price;
+		});
+
+		if (!confirm(`Bạn có chắc muốn mua ${cart.length} sản phẩm với tổng tiền ${totalAmount.toLocaleString('vi-VN')}đ không?`)) {
+			return;
+		}
+
+		// Prepare cart items for API
+		let cartItems = cart.map(item => ({
+			product_id: item.product_id,
+			seller_id: item.seller_id,
+			price: parseInt((item.price || '').replace(/\D/g, '')) || 0,
+			name: item.name,
+			author: item.author,
+			composer: item.composer
+		}));
+
+		// Show loading
+		const checkoutBtn = document.querySelector('button[onclick="processCheckout()"]');
+		const originalText = checkoutBtn.innerHTML;
+		checkoutBtn.innerHTML = 'ĐANG XỬ LÝ...';
+		checkoutBtn.disabled = true;
+
+		// Call checkout API
+		fetch('{{ route("shop.checkout") }}', {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				'X-CSRF-TOKEN': '{{ csrf_token() }}'
+			},
+			body: JSON.stringify({
+				cart_items: cartItems
+			})
+		})
+		.then(response => response.json())
+		.then(data => {
+			if (data.success) {
+				// Clear cart
+				localStorage.removeItem('cart');
+				
+				// Show success message
+				showToast('Mua hàng thành công! Số xu còn lại: ' + data.data.remaining_coins.toLocaleString('vi-VN'), 'success');
+				
+				// Redirect to account/sheets after delay
+				setTimeout(() => {
+					window.location.href = '{{ route("account.sheets") }}';
+				}, 2000);
+			} else {
+				showToast(data.message, 'error');
+			}
+		})
+		.catch(error => {
+			console.error('Checkout error:', error);
+			showToast('Có lỗi xảy ra trong quá trình mua hàng', 'error');
+		})
+		.finally(() => {
+			// Restore button
+			checkoutBtn.innerHTML = originalText;
+			checkoutBtn.disabled = false;
+		});
+	}
+
+	// Toast notification function
+	function showToast(message, type = 'info') {
+		const toast = document.createElement('div');
+		toast.className = `fixed top-4 right-4 px-6 py-3 rounded-lg text-white font-semibold shadow-lg z-50 ${
+			type === 'success' ? 'bg-green-500' : 
+			type === 'error' ? 'bg-red-500' : 'bg-blue-500'
+		}`;
+		toast.textContent = message;
+		document.body.appendChild(toast);
+
+		setTimeout(() => {
+			toast.style.opacity = '0';
+			setTimeout(() => document.body.removeChild(toast), 400);
+		}, 4000);
+	}
 });
 </script>
 @endsection

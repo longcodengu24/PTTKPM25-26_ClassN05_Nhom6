@@ -17,3 +17,10 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('api')->get('/ping', function (Request $request) {
     return response()->json(['message' => 'pong']);
 });
+
+// Cart API routes
+Route::prefix('cart')->group(function () {
+    Route::post('/can-add', [App\Http\Controllers\CartController::class, 'canAddToCart']);
+    Route::get('/purchased-products', [App\Http\Controllers\CartController::class, 'getPurchasedProducts']);
+    Route::post('/validate', [App\Http\Controllers\CartController::class, 'validateCart']);
+});

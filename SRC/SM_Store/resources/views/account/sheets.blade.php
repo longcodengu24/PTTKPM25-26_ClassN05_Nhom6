@@ -3,11 +3,12 @@
 <div class="profile-card rounded-2xl p-6">
     <div class="flex justify-between items-center mb-6">
         <h3 class="orbitron text-xl font-bold text-white">
-            Products Của Tôi ({{ isset($totalUserProducts) ? $totalUserProducts : 0 }})
+            Sheet Nhạc Của Tôi ({{ (isset($totalUserProducts) ? $totalUserProducts : 0) + (isset($totalPurchasedProducts) ? $totalPurchasedProducts : 0) }})
             @if(config('app.debug'))
                 <small class="text-xs text-blue-200 block">
                     Debug: UID = {{ session('firebase_uid', 'NULL') }}, 
-                    User Products = {{ isset($userProducts) ? $userProducts->count() : 'NULL' }}
+                    Own Products = {{ isset($userProducts) ? $userProducts->count() : 'NULL' }},
+                    Purchased = {{ isset($purchasedProducts) ? $purchasedProducts->count() : 'NULL' }}
                 </small>
             @endif
         </h3>
@@ -29,7 +30,7 @@
                 </tr>
             </thead>
             <tbody>
-                <!-- User's real products -->
+                <!-- User's own products -->
                 @if(isset($userProducts) && $userProducts->count() > 0)
                     @foreach($userProducts as $product)
                     <tr class="bg-white/10 hover:bg-white/20 transition rounded-xl">
@@ -44,16 +45,43 @@
                         <td class="py-4 px-4 text-white orbitron font-semibold">{{ number_format($product['price'] ?? 0) }}đ</td>
                         <td class="py-4 px-4 text-white">{{ $product['sold_count'] ?? 0 }}</td>
                         <td class="py-4 px-4">
-                            @if(($product['is_active'] ?? true))
-                                <span class="bg-green-200 text-green-700 px-3 py-1 rounded-full text-xs font-semibold">Đang bán</span>
-                            @else
-                                <span class="bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-xs font-semibold">Đã ẩn</span>
-                            @endif
+                            <span class="bg-green-200 text-green-700 px-3 py-1 rounded-full text-xs font-semibold">Sản phẩm của tôi</span>
                         </td>
                         <td class="py-4 px-4 flex gap-2">
                             <a href="{{ route('account.download', $product['id']) }}" 
                                class="px-4 py-1 rounded bg-blue-500 hover:bg-blue-600 text-white font-semibold shadow inline-block text-center">
                                 Tải
+                            </a>
+                            <a href="{{ route('saler.products.edit', $product['id']) }}" 
+                               class="px-4 py-1 rounded bg-yellow-500 hover:bg-yellow-600 text-white font-semibold shadow inline-block text-center">
+                                Sửa
+                            </a>
+                        </td>
+                    </tr>
+                    @endforeach
+                @endif
+
+                <!-- Purchased products -->
+                @if(isset($purchasedProducts) && $purchasedProducts->count() > 0)
+                    @foreach($purchasedProducts as $product)
+                    <tr class="bg-white/5 hover:bg-white/20 transition rounded-xl">
+                        <td class="py-4 px-4">
+                            <div>
+                                <div class="orbitron font-bold text-white leading-tight">{{ $product['product_name'] ?? 'Chưa có tên' }}</div>
+                                <div class="inter text-xs text-blue-100">{{ $product['author'] ?? 'Chưa xác định' }}</div>
+                            </div>
+                        </td>
+                        <td class="py-4 px-4 text-white">Đã mua</td>
+                        <td class="py-4 px-4 text-white">Music</td>
+                        <td class="py-4 px-4 text-white orbitron font-semibold">{{ number_format($product['price'] ?? 0) }}đ</td>
+                        <td class="py-4 px-4 text-white">-</td>
+                        <td class="py-4 px-4">
+                            <span class="bg-blue-200 text-blue-700 px-3 py-1 rounded-full text-xs font-semibold">Đã mua</span>
+                        </td>
+                        <td class="py-4 px-4 flex gap-2">
+                            <a href="{{ route('account.download', $product['product_id']) }}" 
+                               class="px-4 py-1 rounded bg-green-500 hover:bg-green-600 text-white font-semibold shadow inline-block text-center">
+                                Tải về
                             </a>
                         </td>
                     </tr>

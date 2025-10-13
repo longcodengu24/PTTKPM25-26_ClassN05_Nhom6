@@ -21,12 +21,14 @@ class Product
         'price',
         'youtube_demo_url',
         'downloads_count',
+        'sold_count',
         'is_active',
         'seller_id'
     ];
 
     protected $attributes = [
         'downloads_count' => 0,
+        'sold_count' => 0,
         'is_active' => true,
     ];
 
@@ -47,6 +49,7 @@ class Product
 
             // Đảm bảo có default values
             $data['downloads_count'] = $data['downloads_count'] ?? 0;
+            $data['sold_count'] = $data['sold_count'] ?? 0;
             $data['is_active'] = $data['is_active'] ?? true;
 
             // Tạo document trong Firestore
@@ -376,5 +379,46 @@ class Product
             'author' => $author,
             'transcribed_by' => $transcribed_by
         ];
+    }
+
+    /**
+     * Increment sold count when product is purchased
+     */
+    public function incrementSoldCount(string $productId): bool
+    {
+        try {
+            // Get current product data
+            $product = $this->firestoreService->getDocument($this->collection, $productId);
+            if (!$product) {
+                Log::warning('Product not found for sold count increment', ['product_id' => $productId]);
+                return false;
+            }
+
+            // Increment sold_count
+            $currentSoldCount = $product['sold_count'] ?? 0;
+            $newSoldCount = $currentSoldCount + 1;
+
+            // Update document
+            $updateData = [
+                'sold_count' => $newSoldCount,
+                'updated_at' => now()->toISOString()
+            ];
+
+            $result = $this->firestoreService->updateDocument($this->collection, $productId, $updateData);
+
+            Log::info('Product sold count incremented', [
+                'product_id' => $productId,
+                'old_count' => $currentSoldCount,
+                'new_count' => $newSoldCount
+            ]);
+
+            return $result !== null;
+        } catch (\Exception $e) {
+            Log::error('Error incrementing sold count', [
+                'product_id' => $productId,
+                'error' => $e->getMessage()
+            ]);
+            return false;
+        }
     }
 }

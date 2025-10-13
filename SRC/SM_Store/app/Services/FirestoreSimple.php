@@ -64,6 +64,23 @@ class FirestoreSimple
     }
 
     /**
+     * 📄 Tạo document với ID cụ thể
+     */
+    public function createDocumentWithId(string $collection, string $documentId, array $data)
+    {
+        $fields = $this->formatFields($data);
+
+        $url = "{$this->baseUrl}/{$collection}/{$documentId}?key={$this->apiKey}";
+        $res = Http::patch($url, ['fields' => $fields]);
+
+        if ($res->failed()) {
+            throw new \Exception("Firestore createDocumentWithId error: " . $res->body());
+        }
+
+        return $documentId;
+    }
+
+    /**
      * 📄 Lấy một document theo ID
      */
     public function getDocument(string $collection, string $documentId)
@@ -84,7 +101,7 @@ class FirestoreSimple
     }
 
     /**
-     * 🔄 Cập nhật document với validation
+     * 🔄 Cập nhật document với validation (FIX: sử dụng updateMask để tránh ghi đè)
      */
     public function updateDocument(string $collection, string $documentId, array $data)
     {
@@ -93,7 +110,13 @@ class FirestoreSimple
 
         $fields = $this->formatFields($data);
 
-        $url = "{$this->baseUrl}/{$collection}/{$documentId}?key={$this->apiKey}";
+        // ✅ FIX: Sử dụng updateMask để chỉ update các field cần thiết
+        $fieldPaths = array_map(function ($field) {
+            return "updateMask.fieldPaths={$field}";
+        }, array_keys($data));
+        $updateMaskQuery = implode('&', $fieldPaths);
+        $url = "{$this->baseUrl}/{$collection}/{$documentId}?{$updateMaskQuery}&key={$this->apiKey}";
+
         $res = Http::patch($url, ['fields' => $fields]);
 
         if ($res->failed()) {
@@ -105,6 +128,64 @@ class FirestoreSimple
             'collection' => $collection,
             'document_id' => $documentId,
             'fields' => array_keys($data),
+            'update_mask' => $updateMaskQuery,
+            'timestamp' => now()
+        ]);
+
+        return $res->json();
+    }
+
+    /**
+     * 🔒 Cập nhật document an toàn (chỉ update field coins mà không ghi đè)
+     */
+    public function updateCoinsOnly(string $documentId, int $newCoins)
+    {
+        // Validation cơ bản
+        if (empty($documentId)) {
+            throw new \InvalidArgumentException('Document ID cannot be empty');
+        }
+
+        if ($newCoins < 0) {
+            throw new \InvalidArgumentException('Coins cannot be negative');
+        }
+
+        // Kiểm tra document có tồn tại không trước khi update
+        $existingDoc = $this->getDocument('users', $documentId);
+        if (!$existingDoc) {
+            throw new \Exception("User document {$documentId} not found");
+        }
+
+        // Log trạng thái trước khi update
+        \Illuminate\Support\Facades\Log::info('Updating coins safely', [
+            'document_id' => $documentId,
+            'old_coins' => $existingDoc['coins'] ?? 0,
+            'new_coins' => $newCoins,
+            'user_name' => $existingDoc['name'] ?? 'Unknown',
+            'timestamp' => now()
+        ]);
+
+        // Chỉ cập nhật field coins sử dụng updateMask để đảm bảo chỉ field này được update
+        $data = ['coins' => $newCoins];
+        $fields = $this->formatFields($data);
+
+        // Sử dụng updateMask để chỉ định field coins
+        $url = "{$this->baseUrl}/users/{$documentId}?updateMask.fieldPaths=coins&key={$this->apiKey}";
+        $res = Http::patch($url, ['fields' => $fields]);
+
+        if ($res->failed()) {
+            \Illuminate\Support\Facades\Log::error('Firestore updateCoinsOnly failed', [
+                'document_id' => $documentId,
+                'error' => $res->body(),
+                'status' => $res->status()
+            ]);
+            throw new \Exception('Firestore updateCoinsOnly error: ' . $res->body());
+        }
+
+        // Log thành công
+        \Illuminate\Support\Facades\Log::info('Firestore coins updated successfully', [
+            'document_id' => $documentId,
+            'new_coins' => $newCoins,
+            'user_name' => $existingDoc['name'] ?? 'Unknown',
             'timestamp' => now()
         ]);
 
@@ -287,6 +368,75 @@ class FirestoreSimple
                 return $fieldValue <= $value;
             default:
                 return false;
+        }
+    }
+
+    /**
+     * Get all users from Firestore
+     */
+    public function getAllUsers()
+    {
+        try {
+            $url = $this->baseUrl . '/users?key=' . $this->apiKey;
+
+            $response = Http::get($url);
+            if (!$response->successful()) {
+                throw new \Exception('Failed to fetch users: ' . $response->body());
+            }
+
+            $data = $response->json();
+            $users = [];
+
+            if (isset($data['documents'])) {
+                foreach ($data['documents'] as $doc) {
+                    $pathParts = explode('/', $doc['name']);
+                    $documentId = end($pathParts);
+
+                    if (isset($doc['fields'])) {
+                        $users[$documentId] = $this->parseFields($doc['fields']);
+                    }
+                }
+            }
+
+            return $users;
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Error fetching all users: ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Get all products from Firestore
+     */
+    public function getAllProducts()
+    {
+        try {
+            $url = $this->baseUrl . '/products?key=' . $this->apiKey;
+
+            $response = Http::get($url);
+
+            if (!$response->successful()) {
+                throw new \Exception('Failed to fetch products: ' . $response->body());
+            }
+
+            $data = $response->json();
+            $products = [];
+
+            if (isset($data['documents'])) {
+                foreach ($data['documents'] as $doc) {
+                    $pathParts = explode('/', $doc['name']);
+                    $documentId = end($pathParts);
+
+                    if (isset($doc['fields'])) {
+                        $products[$documentId] = $this->parseFields($doc['fields']);
+                    }
+                }
+            }
+
+            return $products;
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Error fetching all products: ' . $e->getMessage());
+            return [];
         }
     }
 }

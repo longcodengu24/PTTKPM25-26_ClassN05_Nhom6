@@ -29,11 +29,22 @@ class LoadUserData
                 // Lấy thông tin user từ Firebase
                 $user = $this->auth->getUser($uid);
 
-                // Cập nhật session với thông tin mới nhất từ Firebase
+                // Lấy thông tin user từ Firestore để có coins mới nhất
+                $firestoreUser = null;
+                try {
+                    $firestoreService = new \App\Services\FirestoreSimple();
+                    $firestoreUser = $firestoreService->getDocument('users', $uid);
+                } catch (\Exception $e) {
+                    Log::warning('Could not load user from Firestore: ' . $e->getMessage());
+                }
+
+                // Cập nhật session với thông tin mới nhất từ Firebase và Firestore
                 $userData = [
                     'name' => $user->displayName ?? session('name', ''),
                     'email' => $user->email ?? session('email', ''),
-                    'avatar' => $user->photoUrl ?? '/img/default-avatar.png'
+                    'avatar' => $user->photoUrl ?? '/img/default-avatar.png',
+                    'coins' => $firestoreUser['coins'] ?? session('coins', 0),
+                    'role' => $firestoreUser['role'] ?? session('role', 'user')
                 ];
 
                 // Cập nhật session
@@ -46,6 +57,8 @@ class LoadUserData
                     'uid' => $uid,
                     'name' => $userData['name'],
                     'avatar' => $userData['avatar'],
+                    'coins' => $userData['coins'],
+                    'role' => $userData['role'],
                     'firebase_photoUrl' => $user->photoUrl
                 ]);
             } catch (\Exception $e) {
@@ -55,7 +68,9 @@ class LoadUserData
                 $userData = [
                     'name' => session('name', ''),
                     'email' => session('email', ''),
-                    'avatar' => session('avatar', '/img/default-avatar.png')
+                    'avatar' => session('avatar', '/img/default-avatar.png'),
+                    'coins' => session('coins', 0),
+                    'role' => session('role', 'user')
                 ];
                 View::share('currentUser', $userData);
             }
