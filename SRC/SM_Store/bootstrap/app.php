@@ -25,6 +25,11 @@ return Application::configure(basePath: dirname(__DIR__))
             'load.user'     => LoadUserData::class,
         ]);
 
+        // Exclude webhook từ CSRF protection
+        $middleware->validateCsrfTokens(except: [
+            'api/sepay/webhook'
+        ]);
+
         // (tuỳ chọn) nếu muốn gắn middleware vào group 'web' mặc định:
         // $middleware->appendToGroup('web', EnsureFirebaseAuthenticated::class);
     })

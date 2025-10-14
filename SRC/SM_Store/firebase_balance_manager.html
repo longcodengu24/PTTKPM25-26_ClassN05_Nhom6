@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="vi">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>🔧 Firebase Balance Manager</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                max-width: 800px;
+                margin: 50px auto;
+                padding: 20px;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            }
+            .container {
+                background: white;
+                padding: 30px;
+                border-radius: 15px;
+                box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            }
+            h1 {
+                color: #667eea;
+                text-align: center;
+            }
+            .input-group {
+                margin: 20px 0;
+            }
+            label {
+                display: block;
+                font-weight: bold;
+                margin-bottom: 8px;
+                color: #333;
+            }
+            input {
+                width: 100%;
+                padding: 12px;
+                border: 2px solid #ddd;
+                border-radius: 8px;
+                font-size: 16px;
+                box-sizing: border-box;
+            }
+            button {
+                width: 100%;
+                padding: 15px;
+                background: linear-gradient(135deg, #667eea, #764ba2);
+                color: white;
+                border: none;
+                border-radius: 8px;
+                font-size: 18px;
+                font-weight: bold;
+                cursor: pointer;
+                margin-top: 10px;
+            }
+            button:hover {
+                opacity: 0.9;
+            }
+            .btn-get {
+                background: linear-gradient(135deg, #f093fb, #f5576c);
+            }
+            .result {
+                margin-top: 20px;
+                padding: 20px;
+                border-radius: 8px;
+                background: #f8f9fa;
+                border-left: 4px solid #667eea;
+                display: none;
+            }
+            .current-balance {
+                font-size: 32px;
+                font-weight: bold;
+                color: #667eea;
+                text-align: center;
+                margin: 20px 0;
+            }
+            .success {
+                background: #d4edda;
+                color: #155724;
+                border-color: #28a745;
+            }
+            .warning {
+                background: #fff3cd;
+                color: #856404;
+                border-color: #ffc107;
+            }
+            pre {
+                background: #f8f9fa;
+                padding: 10px;
+                border-radius: 4px;
+                overflow-x: auto;
+                font-size: 12px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>🔧 Firebase Balance Manager</h1>
+            <p style="text-align: center; color: #666">
+                Quản lý số dư Firebase của bạn
+            </p>
+
+            <div class="input-group">
+                <label>User ID:</label>
+                <input
+                    type="text"
+                    id="userId"
+                    value="cfT4zfDX4YRkuwd4T6X3seJhtbl1"
+                    readonly
+                />
+            </div>
+
+            <button class="btn-get" onclick="getCurrentBalance()">
+                📊 Xem Số Dư Hiện Tại
+            </button>
+
+            <div id="currentResult" class="result"></div>
+
+            <div class="input-group" style="margin-top: 30px">
+                <label>Số Dư Mới (coins):</label>
+                <input
+                    type="number"
+                    id="newBalance"
+                    placeholder="Nhập số coins muốn set..."
+                />
+            </div>
+
+            <button onclick="setBalance()">💾 Cập Nhật Số Dư</button>
+
+            <div id="setResult" class="result"></div>
+
+            <div
+                class="warning"
+                style="
+                    margin-top: 30px;
+                    padding: 15px;
+                    border-radius: 8px;
+                    border-left: 4px solid #ffc107;
+                    background: #fff3cd;
+                    color: #856404;
+                "
+            >
+                <h3>⚠️ Lưu Ý Quan Trọng</h3>
+                <p>
+                    <strong>Nút "Test Firebase Chi Tiết"</strong> trong
+                    Emergency Dashboard sẽ <strong>CỘNG +1 coin</strong> mỗi lần
+                    click để test write!
+                </p>
+                <p>Dùng tool này để SET số dư chính xác (không cộng thêm).</p>
+            </div>
+        </div>
+
+        <script>
+            const baseUrl =
+                "http://127.0.0.1/PTTKPM25-26_ClassN05_Nhom6/SRC/SM_Store";
+            const userId = "cfT4zfDX4YRkuwd4T6X3seJhtbl1";
+
+            async function getCurrentBalance() {
+                const resultDiv = document.getElementById("currentResult");
+                resultDiv.innerHTML = "⏳ Đang đọc Firebase...";
+                resultDiv.style.display = "block";
+
+                try {
+                    // Dùng route firebase-write-balance với amount 0 để CHỈ ĐỌC
+                    const response = await fetch(
+                        `${baseUrl}/debug/firebase-structure/${userId}`
+                    );
+                    const text = await response.text();
+
+                    try {
+                        const data = JSON.parse(text);
+
+                        // Extract balance from structure
+                        const balance =
+                            data.checks["users/{user_id}/coins"] ||
+                            data.full_user_data?.coins ||
+                            data.checks["users/{user_id}/balance"] ||
+                            0;
+
+                        resultDiv.className = "result success";
+                        resultDiv.innerHTML = `
+                        <h3>✅ Số Dư Hiện Tại</h3>
+                        <div class="current-balance">${balance.toLocaleString()} coins</div>
+                        <p><strong>Firebase Path:</strong> users/${userId}/coins</p>
+                        <p><strong>Last Updated:</strong> ${new Date().toLocaleString(
+                            "vi-VN"
+                        )}</p>
+                        <details>
+                            <summary>Xem chi tiết Firebase structure</summary>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </details>
+                    `;
+
+                        // Auto-fill vào input
+                        document.getElementById("newBalance").value = balance;
+                    } catch (parseError) {
+                        resultDiv.className = "result";
+                        resultDiv.innerHTML = `
+                        <h3>❌ Lỗi Parse JSON</h3>
+                        <p>${parseError.message}</p>
+                        <details>
+                            <summary>Xem response</summary>
+                            <pre>${text}</pre>
+                        </details>
+                    `;
+                    }
+                } catch (error) {
+                    resultDiv.className = "result";
+                    resultDiv.innerHTML = `<h3>❌ Lỗi</h3><p>${error.message}</p>`;
+                }
+            }
+
+            async function setBalance() {
+                const newBalance = document.getElementById("newBalance").value;
+                if (!newBalance || newBalance < 0) {
+                    alert("Vui lòng nhập số dư hợp lệ!");
+                    return;
+                }
+
+                const resultDiv = document.getElementById("setResult");
+                resultDiv.innerHTML = "⏳ Đang cập nhật Firebase...";
+                resultDiv.style.display = "block";
+
+                try {
+                    // Dùng route firebase-write-balance
+                    const response = await fetch(
+                        `${baseUrl}/debug/firebase-write-balance/${userId}/${newBalance}`
+                    );
+                    const text = await response.text();
+
+                    try {
+                        const data = JSON.parse(text);
+
+                        if (data.success || data.write_successful) {
+                            resultDiv.className = "result success";
+                            resultDiv.innerHTML = `
+                            <h3>✅ Cập Nhật Thành Công!</h3>
+                            <p><strong>Số Dư Cũ:</strong> ${(
+                                data.old_balance || 0
+                            ).toLocaleString()} coins</p>
+                            <p><strong>Số Dư Mới:</strong> ${(
+                                data.new_balance || newBalance
+                            ).toLocaleString()} coins</p>
+                            <p><strong>Thay Đổi:</strong> ${(
+                                (data.new_balance || newBalance) -
+                                (data.old_balance || 0)
+                            ).toLocaleString()} coins</p>
+                            <details>
+                                <summary>Xem chi tiết response</summary>
+                                <pre>${JSON.stringify(data, null, 2)}</pre>
+                            </details>
+                        `;
+
+                            // Refresh current balance
+                            setTimeout(getCurrentBalance, 1000);
+                        } else {
+                            resultDiv.className = "result";
+                            resultDiv.innerHTML = `
+                            <h3>❌ Lỗi</h3>
+                            <p>${data.error || "Không thể cập nhật balance"}</p>
+                            <details>
+                                <summary>Xem chi tiết response</summary>
+                                <pre>${JSON.stringify(data, null, 2)}</pre>
+                            </details>
+                        `;
+                        }
+                    } catch (parseError) {
+                        resultDiv.className = "result";
+                        resultDiv.innerHTML = `
+                        <h3>❌ Lỗi Parse JSON</h3>
+                        <p>${parseError.message}</p>
+                        <details>
+                            <summary>Xem response</summary>
+                            <pre>${text}</pre>
+                        </details>
+                    `;
+                    }
+                } catch (error) {
+                    resultDiv.className = "result";
+                    resultDiv.innerHTML = `<h3>❌ Lỗi</h3><p>${error.message}</p>`;
+                }
+            }
+
+            // Auto-load current balance on page load
+            window.onload = getCurrentBalance;
+        </script>
+    </body>
+</html>

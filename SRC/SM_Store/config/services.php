@@ -42,4 +42,12 @@ return [
         'storage_bucket' => env('FIREBASE_STORAGE_BUCKET'),
     ],
 
+    'sepay' => [
+        'token' => env('SEPAY_TOKEN'),
+        'secret_key' => env('SEPAY_SECRET_KEY'),
+        'bank_id' => env('SEPAY_BANK_ID'),
+        'account_id' => env('SEPAY_ACCOUNT_ID'),
+        'webhook_url' => env('SEPAY_WEBHOOK_URL'),
+    ],
+
 ];

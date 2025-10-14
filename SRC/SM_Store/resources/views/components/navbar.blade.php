@@ -32,10 +32,17 @@
         @if(session()->has('firebase_uid'))
             <!-- Compact User Menu -->
             <div class="flex items-center space-x-2">
-                <!-- Shop Features (only on shop page) -->
-                @if(request()->is('shop') && session()->has('firebase_uid'))
-                    <div class="bg-gradient-to-r from-yellow-400 to-yellow-500 text-gray-900 px-2 py-1 rounded-lg font-bold text-xs shadow-md">
-                        🪙 {{ number_format(session('coins', 0)) }}
+                <!-- Balance & Deposit -->
+                @if(session()->has('firebase_uid'))
+                    <div class="flex items-center space-x-1">
+                        <div class="bg-gradient-to-r from-yellow-400 to-yellow-500 text-gray-900 px-2 py-1 rounded-lg font-bold text-xs shadow-md">
+                            🪙 {{ number_format($currentUser['coins'] ?? session('coins', 0)) }}
+                        </div>
+                        <a href="{{ route('payment.deposit') }}" 
+                           class="bg-green-500/80 backdrop-blur-sm text-white p-1.5 rounded-lg hover:bg-green-600 transition-all duration-300 border border-green-400/50 shadow-md text-xs"
+                           title="Nạp tiền">
+                            💳
+                        </a>
                     </div>
                 @endif
                 

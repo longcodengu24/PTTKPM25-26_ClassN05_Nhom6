@@ -49,7 +49,7 @@
                 <!-- Coins -->
                 <div class="bg-black/20 rounded-lg px-4 py-2">
                     <span class="orbitron text-lg font-bold text-yellow-300">
-                        🪙 {{ number_format(session('coins', 0)) }}
+                        🪙 {{ number_format($currentUser['coins'] ?? session('coins', 0)) }}
                     </span>
                 </div>
             </div>

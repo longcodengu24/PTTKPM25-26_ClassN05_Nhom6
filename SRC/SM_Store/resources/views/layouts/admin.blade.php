@@ -75,6 +75,13 @@
                         <p class="inter text-gray-300">Chào mừng trở lại! Quản lý cửa hàng của bạn.</p>
                     </div>
                     <div class="flex items-center space-x-4">
+                        <!-- User Coins Display -->
+                        <div class="bg-black/30 rounded-lg px-4 py-2">
+                            <span class="orbitron text-lg font-bold text-yellow-300">
+                                🪙 {{ number_format($currentUser['coins'] ?? session('coins', 0)) }}
+                            </span>
+                        </div>
+                        
                         <button class="admin-card px-4 py-2 rounded-lg text-white inter hover:bg-white hover:bg-opacity-20">
                             🔔 Thông báo
                         </button>

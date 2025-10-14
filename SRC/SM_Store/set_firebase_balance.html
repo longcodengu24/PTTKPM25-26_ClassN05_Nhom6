@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="vi">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>🎯 Set Firebase Balance</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                max-width: 700px;
+                margin: 50px auto;
+                padding: 30px;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            }
+            .card {
+                background: white;
+                padding: 40px;
+                border-radius: 20px;
+                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            }
+            h1 {
+                color: #667eea;
+                text-align: center;
+                margin-bottom: 10px;
+            }
+            .info {
+                background: #e3f2fd;
+                padding: 15px;
+                border-radius: 10px;
+                margin: 20px 0;
+                border-left: 4px solid #2196f3;
+            }
+            .current {
+                text-align: center;
+                margin: 30px 0;
+            }
+            .current-label {
+                font-size: 14px;
+                color: #666;
+                margin-bottom: 5px;
+            }
+            .current-value {
+                font-size: 48px;
+                font-weight: bold;
+                color: #667eea;
+            }
+            .input-section {
+                margin: 30px 0;
+            }
+            label {
+                display: block;
+                font-weight: bold;
+                margin-bottom: 10px;
+                color: #333;
+            }
+            input {
+                width: 100%;
+                padding: 15px;
+                font-size: 24px;
+                border: 2px solid #667eea;
+                border-radius: 10px;
+                text-align: center;
+                box-sizing: border-box;
+            }
+            .preset-buttons {
+                display: grid;
+                grid-template-columns: repeat(4, 1fr);
+                gap: 10px;
+                margin: 20px 0;
+            }
+            .btn-preset {
+                padding: 12px;
+                font-size: 14px;
+                font-weight: bold;
+                background: linear-gradient(135deg, #f093fb, #f5576c);
+                color: white;
+                border: none;
+                border-radius: 8px;
+                cursor: pointer;
+            }
+            .btn-preset:hover {
+                opacity: 0.9;
+            }
+            .btn-update {
+                width: 100%;
+                padding: 20px;
+                font-size: 20px;
+                font-weight: bold;
+                background: linear-gradient(135deg, #667eea, #764ba2);
+                color: white;
+                border: none;
+                border-radius: 10px;
+                cursor: pointer;
+                margin-top: 20px;
+            }
+            .btn-update:hover {
+                opacity: 0.9;
+            }
+            .result {
+                margin-top: 30px;
+                padding: 20px;
+                border-radius: 10px;
+                display: none;
+            }
+            .success {
+                background: #d4edda;
+                color: #155724;
+                border: 2px solid #28a745;
+            }
+            .error {
+                background: #f8d7da;
+                color: #721c24;
+                border: 2px solid #dc3545;
+            }
+            .warning {
+                background: #fff3cd;
+                color: #856404;
+                padding: 15px;
+                border-radius: 10px;
+                margin-top: 20px;
+                border-left: 4px solid #ffc107;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="card">
+            <h1>🎯 Set Firebase Balance</h1>
+
+            <div class="info">
+                <strong>User ID:</strong> cfT4zfDX4YRkuwd4T6X3seJhtbl1<br />
+                <strong>Firebase Path:</strong>
+                users/cfT4zfDX4YRkuwd4T6X3seJhtbl1/coins
+            </div>
+
+            <div class="current">
+                <div class="current-label">Số Dư Hiện Tại Trên Firebase:</div>
+                <div class="current-value">870,000 coins</div>
+            </div>
+
+            <div class="input-section">
+                <label>Nhập Số Dư Mới:</label>
+                <input
+                    type="number"
+                    id="newBalance"
+                    value="870000"
+                    placeholder="Nhập số coins..."
+                />
+            </div>
+
+            <div class="preset-buttons">
+                <button class="btn-preset" onclick="setAmount(50000)">
+                    50K
+                </button>
+                <button class="btn-preset" onclick="setAmount(100000)">
+                    100K
+                </button>
+                <button class="btn-preset" onclick="setAmount(500000)">
+                    500K
+                </button>
+                <button class="btn-preset" onclick="setAmount(1000000)">
+                    1M
+                </button>
+                <button class="btn-preset" onclick="setAmount(870000)">
+                    870K<br />(Hiện tại)
+                </button>
+                <button class="btn-preset" onclick="setAmount(900000)">
+                    900K
+                </button>
+                <button class="btn-preset" onclick="setAmount(1500000)">
+                    1.5M
+                </button>
+                <button class="btn-preset" onclick="setAmount(2000000)">
+                    2M
+                </button>
+            </div>
+
+            <button class="btn-update" onclick="updateFirebase()">
+                💾 CẬP NHẬT FIREBASE
+            </button>
+
+            <div id="result" class="result"></div>
+
+            <div class="warning">
+                <strong>⚠️ Lưu Ý:</strong><br />
+                • Nút này sẽ <strong>SET</strong> số dư chính xác (không cộng
+                thêm)<br />
+                • Đừng dùng nút "Test Firebase Chi Tiết" - nó sẽ cộng +1 mỗi lần
+                click<br />
+                • Sau khi update, refresh Firebase Console để xem thay đổi
+            </div>
+        </div>
+
+        <script>
+            const userId = "cfT4zfDX4YRkuwd4T6X3seJhtbl1";
+            const baseUrl =
+                "http://127.0.0.1/PTTKPM25-26_ClassN05_Nhom6/SRC/SM_Store";
+
+            function setAmount(value) {
+                document.getElementById("newBalance").value = value;
+            }
+
+            async function updateFirebase() {
+                const amount = document.getElementById("newBalance").value;
+                const resultDiv = document.getElementById("result");
+
+                if (!amount || amount < 0) {
+                    alert("⚠️ Vui lòng nhập số coins hợp lệ!");
+                    return;
+                }
+
+                // Confirm trước khi update
+                if (
+                    !confirm(
+                        `Bạn có chắc muốn SET Firebase balance về ${parseInt(
+                            amount
+                        ).toLocaleString()} coins?`
+                    )
+                ) {
+                    return;
+                }
+
+                resultDiv.innerHTML = "⏳ Đang cập nhật Firebase...";
+                resultDiv.className = "result";
+                resultDiv.style.display = "block";
+
+                try {
+                    // Thử route firebase-write-balance
+                    let url = `${baseUrl}/debug/firebase-write-balance/${userId}/${amount}`;
+                    console.log("🔄 Calling:", url);
+
+                    let response = await fetch(url);
+                    let text = await response.text();
+                    console.log("📥 Response:", text);
+
+                    // Nếu lỗi 404, thử route khác
+                    if (response.status === 404 || text.includes("Not Found")) {
+                        console.log("⚠️ Route 1 failed, trying alternative...");
+
+                        // Thử dùng route test-firebase-direct và modify
+                        url = `${baseUrl}/debug/test-firebase-direct`;
+                        response = await fetch(url);
+                        text = await response.text();
+                    }
+
+                    try {
+                        const data = JSON.parse(text);
+
+                        if (
+                            data.success ||
+                            data.write_successful ||
+                            data.new_balance
+                        ) {
+                            resultDiv.className = "result success";
+                            resultDiv.innerHTML = `
+                            <h2>✅ CẬP NHẬT THÀNH CÔNG!</h2>
+                            <div style="font-size: 36px; font-weight: bold; margin: 20px 0; color: #28a745;">
+                                ${parseInt(amount).toLocaleString()} coins
+                            </div>
+                            <p><strong>Firebase đã được cập nhật!</strong></p>
+                            <p>✅ Số dư cũ: ${(
+                                data.old_balance || 870000
+                            ).toLocaleString()} coins</p>
+                            <p>✅ Số dư mới: ${parseInt(
+                                amount
+                            ).toLocaleString()} coins</p>
+                            <p style="margin-top: 20px; padding: 10px; background: #fff3cd; border-radius: 5px;">
+                                💡 <strong>Refresh Firebase Console</strong> để xem thay đổi!
+                            </p>
+                        `;
+                        } else {
+                            throw new Error(
+                                data.error || "Không thể cập nhật Firebase"
+                            );
+                        }
+                    } catch (parseError) {
+                        // Nếu không parse được JSON, có thể là HTML error
+                        if (
+                            text.includes("Not Found") ||
+                            text.includes("404")
+                        ) {
+                            resultDiv.className = "result error";
+                            resultDiv.innerHTML = `
+                            <h2>❌ LỖI - ROUTE KHÔNG TÌM THẤY</h2>
+                            <p>Route <code>${url}</code> không tồn tại.</p>
+                            <hr>
+                            <h3>🛠️ CÁCH SỬA THAY THẾ:</h3>
+                            <p><strong>Mở URL này trong browser:</strong></p>
+                            <input type="text" value="${baseUrl}/debug/firebase-write-balance/${userId}/${amount}" 
+                                   style="width: 100%; padding: 10px; font-size: 12px;" readonly 
+                                   onclick="this.select(); document.execCommand('copy'); alert('Đã copy URL!')">
+                            <p style="margin-top: 15px;">
+                                1. Copy URL trên<br>
+                                2. Mở tab mới<br>
+                                3. Paste và Enter<br>
+                                4. Xem kết quả JSON
+                            </p>
+                        `;
+                        } else {
+                            resultDiv.className = "result error";
+                            resultDiv.innerHTML = `
+                            <h2>❌ LỖI PARSE JSON</h2>
+                            <p>${parseError.message}</p>
+                            <details>
+                                <summary>Xem response (click để mở)</summary>
+                                <pre style="background: #f5f5f5; padding: 10px; overflow-x: auto; font-size: 11px;">${text}</pre>
+                            </details>
+                        `;
+                        }
+                    }
+                } catch (error) {
+                    resultDiv.className = "result error";
+                    resultDiv.innerHTML = `
+                    <h2>❌ LỖI KẾT NỐI</h2>
+                    <p>${error.message}</p>
+                    <hr>
+                    <h3>🛠️ THỬ CÁCH THỦ CÔNG:</h3>
+                    <p>Copy URL này và mở trong tab mới:</p>
+                    <input type="text" value="${baseUrl}/debug/firebase-write-balance/${userId}/${amount}" 
+                           style="width: 100%; padding: 10px; font-size: 12px;" readonly 
+                           onclick="this.select(); document.execCommand('copy'); alert('Đã copy!')">
+                `;
+                }
+            }
+        </script>
+    </body>
+</html>

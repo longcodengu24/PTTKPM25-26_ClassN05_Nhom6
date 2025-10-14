@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="vi">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>🔍 Check Firebase Balance</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                max-width: 800px;
+                margin: 50px auto;
+                padding: 30px;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            }
+            .card {
+                background: white;
+                padding: 40px;
+                border-radius: 20px;
+                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            }
+            h1 {
+                color: #667eea;
+                text-align: center;
+            }
+            .balance {
+                text-align: center;
+                margin: 40px 0;
+            }
+            .balance-value {
+                font-size: 64px;
+                font-weight: bold;
+                color: #667eea;
+                text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+            }
+            .balance-label {
+                font-size: 18px;
+                color: #666;
+                margin-top: 10px;
+            }
+            button {
+                width: 100%;
+                padding: 20px;
+                font-size: 20px;
+                font-weight: bold;
+                background: linear-gradient(135deg, #667eea, #764ba2);
+                color: white;
+                border: none;
+                border-radius: 10px;
+                cursor: pointer;
+                margin: 10px 0;
+            }
+            button:hover {
+                opacity: 0.9;
+            }
+            .info {
+                background: #e3f2fd;
+                padding: 20px;
+                border-radius: 10px;
+                margin: 20px 0;
+            }
+            .timestamp {
+                text-align: center;
+                color: #999;
+                font-size: 14px;
+                margin-top: 20px;
+            }
+            .loading {
+                text-align: center;
+                color: #667eea;
+                font-size: 18px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="card">
+            <h1>🔍 Check Firebase Balance</h1>
+
+            <div class="info">
+                <strong>User ID:</strong> cfT4zfDX4YRkuwd4T6X3seJhtbl1<br />
+                <strong>Firebase Path:</strong>
+                users/cfT4zfDX4YRkuwd4T6X3seJhtbl1/coins
+            </div>
+
+            <div id="loading" class="loading" style="display: none">
+                ⏳ Đang đọc Firebase...
+            </div>
+
+            <div id="balanceDisplay" style="display: none">
+                <div class="balance">
+                    <div class="balance-value" id="balanceValue">0</div>
+                    <div class="balance-label">coins</div>
+                </div>
+                <div class="timestamp" id="timestamp"></div>
+            </div>
+
+            <button onclick="checkBalance()">
+                🔄 KIỂM TRA FIREBASE BALANCE
+            </button>
+
+            <button
+                onclick="location.href='http://127.0.0.1/PTTKPM25-26_ClassN05_Nhom6/SRC/SM_Store/account/deposit'"
+                style="background: linear-gradient(135deg, #f093fb, #f5576c)"
+            >
+                ← Quay Lại Nạp Tiền
+            </button>
+        </div>
+
+        <script>
+            const userId = "cfT4zfDX4YRkuwd4T6X3seJhtbl1";
+
+            async function checkBalance() {
+                const loading = document.getElementById("loading");
+                const balanceDisplay =
+                    document.getElementById("balanceDisplay");
+                const balanceValue = document.getElementById("balanceValue");
+                const timestamp = document.getElementById("timestamp");
+
+                loading.style.display = "block";
+                balanceDisplay.style.display = "none";
+
+                try {
+                    // Call PHP script to check Firebase
+                    const response = await fetch(
+                        `test_firebase_direct.php?check_only=1&user_id=${userId}`
+                    );
+                    const text = await response.text();
+
+                    // Parse output
+                    const balanceMatch = text.match(/Current balance: (\\d+)/);
+                    if (balanceMatch) {
+                        const balance = parseInt(balanceMatch[1]);
+                        balanceValue.textContent =
+                            balance.toLocaleString("vi-VN");
+                        timestamp.textContent = `Cập nhật lúc: ${new Date().toLocaleString(
+                            "vi-VN"
+                        )}`;
+
+                        loading.style.display = "none";
+                        balanceDisplay.style.display = "block";
+                    } else {
+                        throw new Error("Cannot parse balance from response");
+                    }
+                } catch (error) {
+                    loading.style.display = "none";
+                    alert("❌ Lỗi: " + error.message);
+                    console.error(error);
+                }
+            }
+
+            // Auto check on page load
+            window.onload = checkBalance;
+
+            // Auto refresh every 5 seconds
+            setInterval(checkBalance, 5000);
+        </script>
+    </body>
+</html>

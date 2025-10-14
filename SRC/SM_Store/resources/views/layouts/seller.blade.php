@@ -74,6 +74,13 @@
                         <p class="inter text-gray-300">Chào mừng! Quản lý shop nhạc của bạn.</p>
                     </div>
                     <div class="flex items-center space-x-4">
+                        <!-- User Coins Display -->
+                        <div class="bg-black/30 rounded-lg px-4 py-2">
+                            <span class="orbitron text-lg font-bold text-yellow-300">
+                                🪙 {{ number_format($currentUser['coins'] ?? session('coins', 0)) }}
+                            </span>
+                        </div>
+                        
                         <!-- Quick Switch Button with Tooltip -->
                         <div class="relative group">
                             <a href="{{ route('home') }}" 
