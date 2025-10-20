@@ -48,7 +48,6 @@
                     <li><a href="{{ route('saler.dashboard') }}" class="sidebar-link w-full text-left px-4 py-3 rounded-lg text-white inter flex items-center space-x-3">📊 Dashboard</a></li>
                     <li><a href="{{ route('saler.products.index') }}" class="sidebar-link w-full text-left px-4 py-3 rounded-lg text-white inter flex items-center space-x-3">🎼 Sheet Nhạc</a></li>
                     <li><a href="{{ route('saler.orders') }}" class="sidebar-link w-full text-left px-4 py-3 rounded-lg text-white inter flex items-center space-x-3">🛒 Đơn Hàng</a></li>
-                    <li><a href="{{ route('saler.analytics') }}" class="sidebar-link w-full text-left px-4 py-3 rounded-lg text-white inter flex items-center space-x-3">📈 Thống Kê</a></li>
                     <li><a href="{{ route('saler.profile') }}" class="sidebar-link w-full text-left px-4 py-3 rounded-lg text-white inter flex items-center space-x-3">👤 Hồ Sơ</a></li>
                 </ul>
                 

@@ -152,9 +152,14 @@
                 ➕ Thêm Sản Phẩm Mới
             </a>
             
-            <a href="{{ route('saler.analytics') }}" 
+            <a href="{{ route('saler.dashboard') }}" 
                class="bg-purple-500 hover:bg-purple-600 px-6 py-3 rounded-lg text-white inter font-semibold">
-                📈 Xem Thống Kê
+                📈 Xem Dashboard
+            </a>
+            
+            <a href="{{ route('saler.orders') }}" 
+               class="bg-orange-500 hover:bg-orange-600 px-6 py-3 rounded-lg text-white inter font-semibold">
+                📦 Quản Lý Đơn Hàng
             </a>
         </div>
     </div>

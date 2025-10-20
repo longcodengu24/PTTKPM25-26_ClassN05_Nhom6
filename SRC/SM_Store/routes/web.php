@@ -10,6 +10,8 @@ use App\Http\Controllers\Admin\UserRoleController;
 use App\Http\Controllers\Account\AccountController;
 use App\Http\Controllers\ShopController;
 use App\Http\Controllers\CheckoutController;
+use App\Http\Controllers\Seller\OrderController;
+use App\Http\Controllers\Seller\DashboardController;
 use Kreait\Firebase\Contract\Auth;
 
 Route::get('/', fn() => view('page.home.index'))->name('home')->middleware('load.user');
@@ -66,17 +68,17 @@ Route::prefix('saler')
     ->middleware(['firebase.auth', 'role:saler', 'load.user'])
     ->group(function () {
 
-        // 👇 Thêm dòng này để fix lỗi:
-        Route::get('/dashboard', fn() => view('saler.dashboard'))
+        // Dashboard với thống kê
+        Route::get('/dashboard', [DashboardController::class, 'index'])
             ->name('saler.dashboard');
 
         // Các route khác:
-        Route::get('/orders', fn() => view('saler.orders.index'))->name('saler.orders');
-        Route::get('/orders/{id}', fn($id) => view('saler.orders.detail'))->name('saler.orders.detail');
+        Route::get('/orders', [OrderController::class, 'index'])->name('saler.orders');
+        Route::get('/orders/{id}', [OrderController::class, 'show'])->name('saler.orders.detail');
+        Route::put('/orders/{id}/status', [OrderController::class, 'updateStatus'])->name('saler.orders.update-status');
         Route::get('/users', fn() => view('saler.users.index'))->name('saler.users');
         Route::get('/posts', fn() => view('saler.posts.index'))->name('saler.posts');
         Route::get('/posts/create', fn() => view('saler.posts.create'))->name('saler.posts.create');
-        Route::get('/analytics', fn() => view('saler.analytics.index'))->name('saler.analytics');
         Route::get('/profile', fn() => view('saler.profile.index'))->name('saler.profile');
         Route::get('/settings', fn() => view('saler.settings.index'))->name('saler.settings');
 
