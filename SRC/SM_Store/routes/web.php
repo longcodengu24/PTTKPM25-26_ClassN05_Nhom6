@@ -101,7 +101,7 @@ Route::prefix('saler')
 Route::prefix('admin')
     ->middleware(['firebase.auth', 'role:admin'])
     ->group(function () {
-        Route::get('/dashboard', fn() => view('admin.dashboard.dashboard'))->name('admin.dashboard');
+        Route::get('/dashboard', [\App\Http\Controllers\Admin\DashboardController::class, 'index'])->name('admin.dashboard');
 
         Route::get('/roles', [UserRoleController::class, 'index'])->name('admin.roles.index');
         Route::post('/roles/{uid}', [UserRoleController::class, 'updateRole'])->name('admin.roles.update');
