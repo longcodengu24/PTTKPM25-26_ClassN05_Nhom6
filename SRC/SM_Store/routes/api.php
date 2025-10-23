@@ -18,6 +18,7 @@ Route::middleware('api')->get('/ping', function (Request $request) {
     return response()->json(['message' => 'pong']);
 });
 
+<<<<<<< HEAD
 // Payment API - Create deposit (no CSRF required)
 Route::post('/payment/create', [\App\Http\Controllers\Account\PaymentController::class, 'createDeposit'])
     ->middleware('web'); // Cần web middleware để có session
@@ -76,14 +77,19 @@ Route::post('/sepay/webhook', [\App\Http\Controllers\Account\PaymentController::
     ->name('sepay.webhook.custom')
     ->withoutMiddleware(['throttle:api']);
 
+=======
+>>>>>>> 4e0fcd0d9d0af40ad9cee5488658eb3cda4b9836
 // Cart API routes
 Route::prefix('cart')->group(function () {
     Route::post('/can-add', [App\Http\Controllers\CartController::class, 'canAddToCart']);
     Route::get('/purchased-products', [App\Http\Controllers\CartController::class, 'getPurchasedProducts']);
     Route::post('/validate', [App\Http\Controllers\CartController::class, 'validateCart']);
 });
+<<<<<<< HEAD
 
 // Product API routes
 Route::get('/products/{id}', [\App\Http\Controllers\ProductController::class, 'getProductById'])
     ->middleware('web');
 
+=======
+>>>>>>> 4e0fcd0d9d0af40ad9cee5488658eb3cda4b9836

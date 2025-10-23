@@ -8,14 +8,20 @@ use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\Admin\UserRoleController;
 // SalerController removed - using Seller\ProductController instead
 use App\Http\Controllers\Account\AccountController;
+<<<<<<< HEAD
 use App\Http\Controllers\Account\CartController;
+=======
+>>>>>>> 4e0fcd0d9d0af40ad9cee5488658eb3cda4b9836
 use App\Http\Controllers\ShopController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\Seller\OrderController;
 use App\Http\Controllers\Seller\DashboardController;
 use Kreait\Firebase\Contract\Auth;
 
+<<<<<<< HEAD
 use App\Http\Controllers\Account\PaymentController;
+=======
+>>>>>>> 4e0fcd0d9d0af40ad9cee5488658eb3cda4b9836
 Route::get('/', fn() => view('page.home.index'))->name('home')->middleware('load.user');
 
 // Debug route để xem Firebase users
@@ -48,10 +54,15 @@ Route::get('/community/post/{id}', fn($id) => view('page.community.post-detail')
 
 Route::get('/shop', [ShopController::class, 'index'])->name('shop.index')->middleware('load.user');
 Route::post('/shop/filter', [ShopController::class, 'filter'])->name('shop.filter');
+<<<<<<< HEAD
 // Redirect old cart route to new account cart
 Route::get('/shop/cart', fn() => redirect()->route('account.cart'))->name('shop.cart')->middleware('load.user');
 Route::get('/shop/checkout', [CheckoutController::class, 'showCheckout'])->name('shop.checkout')->middleware(['firebase.auth', 'load.user']);
 Route::post('/shop/checkout/process', [CheckoutController::class, 'processCheckout'])->name('shop.checkout.process')->middleware(['firebase.auth', 'load.user']);
+=======
+Route::get('/shop/cart', fn() => view('page.shop.cart'))->name('shop.cart')->middleware('load.user');
+Route::post('/shop/checkout', [CheckoutController::class, 'processCheckout'])->name('shop.checkout')->middleware(['firebase.auth', 'load.user']);
+>>>>>>> 4e0fcd0d9d0af40ad9cee5488658eb3cda4b9836
 
 Route::get('/support', fn() => view('page.support.index'))->name('support.index')->middleware('load.user');
 
@@ -133,6 +144,7 @@ Route::prefix('account')
         Route::put('/update', [AccountController::class, 'updateProfile'])->name('account.update');
         Route::get('/deposit', [AccountController::class, 'deposit'])->name('account.deposit');
         Route::get('/withdraw', [AccountController::class, 'withdraw'])->name('account.withdraw');
+<<<<<<< HEAD
         Route::post('/withdraw/process', [AccountController::class, 'processWithdraw'])->name('account.withdraw.process');
         Route::get('/download/{id}', [AccountController::class, 'downloadSheet'])->name('account.download');
         
@@ -296,3 +308,7 @@ Route::prefix('debug')->group(function() {
         ]);
     })->name('debug.test.webhook');
 });
+=======
+        Route::get('/download/{id}', [AccountController::class, 'downloadSheet'])->name('account.download');
+    });
+>>>>>>> 4e0fcd0d9d0af40ad9cee5488658eb3cda4b9836

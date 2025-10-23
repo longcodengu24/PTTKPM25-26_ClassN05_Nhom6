@@ -7,8 +7,12 @@
     "license": "MIT",
     "require": {
         "php": "^8.2",
+<<<<<<< HEAD
         "google/cloud-firestore": "^1.53",
         "kreait/firebase-php": "^7.23",
+=======
+        "kreait/firebase-php": "^7.22",
+>>>>>>> 4e0fcd0d9d0af40ad9cee5488658eb3cda4b9836
         "laravel/framework": "^12.0",
         "laravel/tinker": "^2.10.1"
     },

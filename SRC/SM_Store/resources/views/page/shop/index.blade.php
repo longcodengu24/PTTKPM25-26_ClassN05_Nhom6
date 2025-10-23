@@ -384,14 +384,19 @@ function openProductDetail(name, author, composer, price, img, video) {
         if (shopDiv && shopDiv._x_dataStack) {
             var p = shopDiv._x_dataStack[0].product;
             if (!p || !p.name) return;
+<<<<<<< HEAD
             
             console.log('DEBUG addToCart:', { seller_id: p.seller_id, currentUserId: currentUserId, product: p });
             
             // Kiểm tra không thể mua sheet của chính mình
+=======
+            console.log('DEBUG addToCart:', { seller_id: p.seller_id, currentUserId: currentUserId, product: p });
+>>>>>>> 4e0fcd0d9d0af40ad9cee5488658eb3cda4b9836
             if (p.seller_id && currentUserId && p.seller_id == currentUserId) {
                 showToast('Bạn không thể thêm sheet nhạc của chính mình vào giỏ hàng!', 'error');
                 return;
             }
+<<<<<<< HEAD
 
             // Parse price (remove "đ" and convert to number)
             var priceStr = (p.price || '').replace(/\D/g, '');
@@ -425,6 +430,26 @@ function openProductDetail(name, author, composer, price, img, video) {
                 console.error('Error adding to cart:', error);
                 showToast('Có lỗi xảy ra khi thêm vào giỏ hàng', 'error');
             });
+=======
+            var cart = JSON.parse(localStorage.getItem('cart') || '[]');
+            // Kiểm tra sheet đã có trong giỏ chưa (theo product_id)
+            var exists = cart.some(item => item.product_id === p.product_id);
+            if (exists) {
+                showToast('Sheet nhạc này đã có trong giỏ hàng!', 'error');
+                return;
+            }
+            cart.push({
+                name: p.name,
+                author: p.author,
+                composer: p.composer,
+                price: p.price,
+                img: p.img,
+                seller_id: p.seller_id,
+                product_id: p.product_id
+            });
+            localStorage.setItem('cart', JSON.stringify(cart));
+            showToast('Đã thêm vào giỏ hàng!', 'info');
+>>>>>>> 4e0fcd0d9d0af40ad9cee5488658eb3cda4b9836
         }
     }
     </script>

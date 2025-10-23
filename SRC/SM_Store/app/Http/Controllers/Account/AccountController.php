@@ -312,6 +312,7 @@ class AccountController extends Controller
         return view('account.withdraw', compact('userData'));
     }
 
+<<<<<<< HEAD
     public function processWithdraw(Request $request)
     {
         try {
@@ -422,6 +423,8 @@ class AccountController extends Controller
         }
     }
 
+=======
+>>>>>>> 4e0fcd0d9d0af40ad9cee5488658eb3cda4b9836
     public function downloadSheet($id)
     {
         try {
@@ -713,6 +716,7 @@ class AccountController extends Controller
             return response()->json(['error' => 'Có lỗi xảy ra khi tải file'], 500);
         }
     }
+<<<<<<< HEAD
 
 
 
@@ -757,4 +761,6 @@ public function showMySheets()
 }
 
 
+=======
+>>>>>>> 4e0fcd0d9d0af40ad9cee5488658eb3cda4b9836
 }

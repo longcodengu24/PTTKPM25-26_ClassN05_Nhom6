@@ -22,6 +22,7 @@ class CheckoutController extends Controller
     }
 
     /**
+<<<<<<< HEAD
      * Hiển thị trang checkout
      */
     public function showCheckout(Request $request)
@@ -49,6 +50,8 @@ class CheckoutController extends Controller
     }
 
     /**
+=======
+>>>>>>> 4e0fcd0d9d0af40ad9cee5488658eb3cda4b9836
      * Xử lý checkout giỏ hàng
      */
     public function processCheckout(Request $request)
@@ -90,15 +93,23 @@ class CheckoutController extends Controller
             }
 
             // Lấy thông tin người mua
+<<<<<<< HEAD
             $buyerResult = $this->firestoreService->getDocument('users', $buyerId);
             if (!$buyerResult['success']) {
+=======
+            $buyer = $this->firestoreService->getDocument('users', $buyerId);
+            if (!$buyer) {
+>>>>>>> 4e0fcd0d9d0af40ad9cee5488658eb3cda4b9836
                 return response()->json([
                     'success' => false,
                     'message' => 'Không tìm thấy thông tin người dùng'
                 ], 404);
             }
 
+<<<<<<< HEAD
             $buyer = $buyerResult['data'];
+=======
+>>>>>>> 4e0fcd0d9d0af40ad9cee5488658eb3cda4b9836
             $buyerCoins = $buyer['coins'] ?? 0;
 
             // Kiểm tra đủ xu
@@ -140,10 +151,16 @@ class CheckoutController extends Controller
 
                 // Cộng xu cho seller (fix: accumulate all products from same seller)
                 if (!isset($sellersUpdated[$sellerId])) {
+<<<<<<< HEAD
                     $sellerResult = $this->firestoreService->getDocument('users', $sellerId);
                     $sellerData = $sellerResult['success'] ? $sellerResult['data'] : [];
                     $sellersUpdated[$sellerId] = [
                         'current_coins' => $sellerData['coins'] ?? 0,
+=======
+                    $seller = $this->firestoreService->getDocument('users', $sellerId);
+                    $sellersUpdated[$sellerId] = [
+                        'current_coins' => $seller['coins'] ?? 0,
+>>>>>>> 4e0fcd0d9d0af40ad9cee5488658eb3cda4b9836
                         'earned_coins' => 0
                     ];
                 }
@@ -166,6 +183,7 @@ class CheckoutController extends Controller
                     'status' => 'completed'
                 ];
 
+<<<<<<< HEAD
                 // Lưu vào collection purchases với ID tự động
                 $purchaseId = 'purchase_' . time() . '_' . substr($buyerId, 0, 8) . '_' . substr($productId, 0, 8);
                 $purchaseResult = $this->firestoreService->createDocument('purchases', $purchaseId, $purchaseData);
@@ -173,6 +191,11 @@ class CheckoutController extends Controller
                 if ($purchaseResult['success']) {
                     $purchasedItems[] = array_merge($purchaseData, ['id' => $purchaseId]);
                 }
+=======
+                // Lưu vào collection purchases
+                $purchaseId = $this->firestoreService->createDocument('purchases', $purchaseData);
+                $purchasedItems[] = array_merge($purchaseData, ['id' => $purchaseId]);
+>>>>>>> 4e0fcd0d9d0af40ad9cee5488658eb3cda4b9836
 
                 // Increment sold count cho product
                 $this->productModel->incrementSoldCount($productId);
@@ -286,11 +309,15 @@ class CheckoutController extends Controller
                 'read' => false
             ]);
 
+<<<<<<< HEAD
             // Tạo ID tự động cho activity
             $activityId = 'activity_' . time() . '_' . uniqid();
             $result = $this->firestoreService->createDocument('activities', $activityId, $activityData);
             
             return $result['success'] ? $activityId : null;
+=======
+            return $this->firestoreService->createDocument('activities', $activityData);
+>>>>>>> 4e0fcd0d9d0af40ad9cee5488658eb3cda4b9836
         } catch (\Exception $e) {
             Log::error('Error creating activity: ' . $e->getMessage());
             return null;
