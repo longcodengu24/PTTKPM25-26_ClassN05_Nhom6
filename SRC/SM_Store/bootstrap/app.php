@@ -14,8 +14,8 @@ return Application::configure(basePath: dirname(__DIR__))
         web: __DIR__ . '/../routes/web.php',
         commands: __DIR__ . '/../routes/console.php',
         health: '/up',
-        // nếu có api routes thì mở dòng dưới
-        // api: __DIR__.'/../routes/api.php',
+        // Enable API routes
+        api: __DIR__.'/../routes/api.php',
     )
     ->withMiddleware(function (Middleware $middleware): void {
         // Đăng ký alias để dùng trong routes: ['firebase.auth', 'role:admin']
@@ -23,6 +23,12 @@ return Application::configure(basePath: dirname(__DIR__))
             'firebase.auth' => EnsureFirebaseAuthenticated::class,
             'role'          => RoleMiddleware::class,
             'load.user'     => LoadUserData::class,
+        ]);
+        
+        // Exclude webhook from CSRF protection
+        $middleware->validateCsrfTokens(except: [
+            'api/sepay/webhook',
+            'api/*'  // Tất cả API routes không cần CSRF
         ]);
 
         // (tuỳ chọn) nếu muốn gắn middleware vào group 'web' mặc định:

@@ -312,6 +312,116 @@ class AccountController extends Controller
         return view('account.withdraw', compact('userData'));
     }
 
+    public function processWithdraw(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'amount' => 'required|integer|min:5000|max:50000000',
+                'method' => 'required|in:momo,zalopay,bank',
+                'account_info' => 'required|string|min:9|max:20'
+            ]);
+
+            $userId = session('firebase_uid');
+            
+            if (!$userId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Vui lòng đăng nhập'
+                ], 401);
+            }
+
+            $amount = $validated['amount'];
+            $method = $validated['method'];
+            $accountInfo = $validated['account_info'];
+
+            // Kiểm tra amount phải là bội số của 5000
+            if ($amount % 5000 !== 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Số tiền rút phải là bội số của 5,000'
+                ]);
+            }
+
+            // Lấy thông tin user từ Firestore
+            $firestore = new \App\Services\FirestoreRestService();
+            $userDoc = $firestore->getDocument('users', $userId);
+            
+            if (!$userDoc['success']) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Không tìm thấy thông tin người dùng'
+                ], 404);
+            }
+
+            $userData = $userDoc['data'];
+            $currentCoins = $userData['coins'] ?? 0;
+
+            // Kiểm tra đủ coins không
+            if ($currentCoins < $amount) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Số dư không đủ. Bạn có ' . number_format($currentCoins) . ' coins'
+                ]);
+            }
+
+            // Trừ coins
+            $newCoins = $currentCoins - $amount;
+            $userData['coins'] = $newCoins;
+
+            // Cập nhật Firestore
+            $updateResult = $firestore->updateDocument('users', $userId, $userData);
+
+            if (!$updateResult['success']) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Không thể cập nhật số dư'
+                ], 500);
+            }
+
+            // Log activity
+            $activityService = new ActivityService();
+            $message = "Rút tiền thành công: " . number_format($amount) . " coins qua " . strtoupper($method);
+            $activityService->createActivity($userId, 'withdraw', $message, [
+                'amount' => $amount,
+                'method' => $method,
+                'account_info' => $accountInfo,
+                'old_balance' => $currentCoins,
+                'new_balance' => $newCoins
+            ]);
+
+            Log::info('💸 Withdraw successful', [
+                'user_id' => $userId,
+                'amount' => $amount,
+                'method' => $method,
+                'new_balance' => $newCoins
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Rút tiền thành công!',
+                'data' => [
+                    'old_coins' => $currentCoins,
+                    'new_coins' => $newCoins,
+                    'withdrawn_amount' => $amount,
+                    'method' => $method
+                ]
+            ]);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Dữ liệu không hợp lệ',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error('❌ processWithdraw error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Có lỗi xảy ra: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
     public function downloadSheet($id)
     {
         try {
@@ -603,4 +713,48 @@ class AccountController extends Controller
             return response()->json(['error' => 'Có lỗi xảy ra khi tải file'], 500);
         }
     }
+
+
+
+
+public function showMySheets()
+{
+    $userId = session('firebase_uid');
+    if (!$userId) {
+        return redirect()->route('login')->with('error', 'Vui lòng đăng nhập.');
+    }
+
+    // 🔹 Lấy document user
+    $firestore = app(\App\Services\FirestoreRestService::class);
+    $userDoc = $firestore->getDocument('users', $userId);
+
+    if (!$userDoc['success']) {
+        return back()->with('error', 'Không tìm thấy người dùng trong Firestore.');
+    }
+
+    $userData = $userDoc['data'];
+
+    // 🔹 Lấy danh sách sheet đã mua (listsheets)
+    $purchasedProducts = collect();
+
+    if (isset($userData['listsheets']) && is_array($userData['listsheets'])) {
+        // Nếu là map (key => product_id)
+        if (array_keys($userData['listsheets']) !== range(0, count($userData['listsheets']) - 1)) {
+            foreach ($userData['listsheets'] as $id => $sheet) {
+                $sheet['product_id'] = $id;
+                $purchasedProducts->push($sheet);
+            }
+        } else {
+            // Nếu là array
+            $purchasedProducts = collect($userData['listsheets']);
+        }
+    }
+
+    return view('account.sheets', [
+        'purchasedProducts' => $purchasedProducts,
+        'totalPurchasedProducts' => $purchasedProducts->count(),
+    ]);
+}
+
+
 }

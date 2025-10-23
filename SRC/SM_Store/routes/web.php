@@ -8,12 +8,14 @@ use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\Admin\UserRoleController;
 // SalerController removed - using Seller\ProductController instead
 use App\Http\Controllers\Account\AccountController;
+use App\Http\Controllers\Account\CartController;
 use App\Http\Controllers\ShopController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\Seller\OrderController;
 use App\Http\Controllers\Seller\DashboardController;
 use Kreait\Firebase\Contract\Auth;
 
+use App\Http\Controllers\Account\PaymentController;
 Route::get('/', fn() => view('page.home.index'))->name('home')->middleware('load.user');
 
 // Debug route để xem Firebase users
@@ -46,8 +48,10 @@ Route::get('/community/post/{id}', fn($id) => view('page.community.post-detail')
 
 Route::get('/shop', [ShopController::class, 'index'])->name('shop.index')->middleware('load.user');
 Route::post('/shop/filter', [ShopController::class, 'filter'])->name('shop.filter');
-Route::get('/shop/cart', fn() => view('page.shop.cart'))->name('shop.cart')->middleware('load.user');
-Route::post('/shop/checkout', [CheckoutController::class, 'processCheckout'])->name('shop.checkout')->middleware(['firebase.auth', 'load.user']);
+// Redirect old cart route to new account cart
+Route::get('/shop/cart', fn() => redirect()->route('account.cart'))->name('shop.cart')->middleware('load.user');
+Route::get('/shop/checkout', [CheckoutController::class, 'showCheckout'])->name('shop.checkout')->middleware(['firebase.auth', 'load.user']);
+Route::post('/shop/checkout/process', [CheckoutController::class, 'processCheckout'])->name('shop.checkout.process')->middleware(['firebase.auth', 'load.user']);
 
 Route::get('/support', fn() => view('page.support.index'))->name('support.index')->middleware('load.user');
 
@@ -129,5 +133,166 @@ Route::prefix('account')
         Route::put('/update', [AccountController::class, 'updateProfile'])->name('account.update');
         Route::get('/deposit', [AccountController::class, 'deposit'])->name('account.deposit');
         Route::get('/withdraw', [AccountController::class, 'withdraw'])->name('account.withdraw');
+        Route::post('/withdraw/process', [AccountController::class, 'processWithdraw'])->name('account.withdraw.process');
         Route::get('/download/{id}', [AccountController::class, 'downloadSheet'])->name('account.download');
+        
+        // Cart routes
+        Route::get('/cart', [CartController::class, 'index'])->name('account.cart');
     });
+
+
+
+
+// Trang thanh toán paycart
+Route::get('/account/paycart', fn() => view('account.paycart'))->name('account.paycart')->middleware(['firebase.auth', 'load.user']);
+Route::post('/paycart/confirm', [App\Http\Controllers\Account\PaymentController::class, 'confirmCartPayment'])
+    ->name('account.paycart.confirm');
+
+//show 
+Route::get('/account/sheets', [App\Http\Controllers\Account\AccountController::class, 'showMySheets'])
+    ->name('account.sheets');
+
+
+
+Route::prefix('payment')
+    ->middleware(['firebase.auth', 'load.user'])
+    ->group(function () {
+        Route::get('/deposit', [PaymentController::class, 'showDepositForm'])->name('payment.deposit');
+        Route::post('/deposit/create', [PaymentController::class, 'createDeposit'])->name('payment.deposit.create');
+        Route::get('/check-status', [PaymentController::class, 'checkPaymentStatus'])->name('payment.check.status');
+    });
+
+// Webhook SePay (API không cần auth)
+Route::post('/api/sepay/webhook', [PaymentController::class, 'handleWebhook']);
+
+// Cart API routes (cần auth)
+Route::prefix('api/cart')
+    ->middleware(['firebase.auth'])
+    ->group(function () {
+        Route::get('/', [CartController::class, 'getCart']);
+        Route::post('/add', [CartController::class, 'addToCart']);
+        Route::post('/remove', [CartController::class, 'removeFromCart']);
+        Route::post('/update', [CartController::class, 'updateQuantity']);
+        Route::post('/clear', [CartController::class, 'clearCart']);
+    });
+
+// Debug routes cho test SePay
+Route::prefix('debug')->group(function() {
+    // Test add to cart
+    Route::get('/test-cart', function() {
+        $userId = session('firebase_uid');
+        if (!$userId) {
+            return response()->json(['error' => 'Not logged in. User ID: ' . session('firebase_uid')]);
+        }
+        
+        $cartController = app(\App\Http\Controllers\Account\CartController::class);
+        $request = new \Illuminate\Http\Request();
+        $request->merge([
+            'product_id' => 'test_product_' . time(),
+            'name' => 'Test Product',
+            'price' => 100000,
+            'image' => 'test.jpg',
+            'quantity' => 1
+        ]);
+        
+        return $cartController->addToCart($request);
+    })->middleware(['firebase.auth'])->name('debug.test-cart');
+    
+    Route::get('/transactions/{userId?}', function($userId = null) {
+        $transactionService = app(\App\Services\TransactionService::class);
+        $userId = $userId ?? session('firebase_uid');
+        
+        if (!$userId) {
+            return response()->json(['error' => 'No user ID provided']);
+        }
+        
+        $transactions = $transactionService->getUserTransactions($userId);
+        
+        return response()->json([
+            'user_id' => $userId,
+            'transactions' => $transactions
+        ]);
+    })->name('debug.transactions');
+    
+    Route::get('/check-status/{transactionId}', function($transactionId) {
+        $transactionService = app(\App\Services\TransactionService::class);
+        $transaction = $transactionService->getTransactionById($transactionId);
+        
+        if (!$transaction) {
+            return response()->json(['success' => false, 'message' => 'Transaction not found']);
+        }
+        
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'transaction_id' => $transaction['data']['transaction_id'],
+                'status' => $transaction['data']['status'],
+                'amount' => $transaction['data']['amount'],
+                'processed' => $transaction['data']['processed'] ?? false,
+                'created_at' => $transaction['data']['created_at'] ?? null,
+                'completed_at' => $transaction['data']['completed_at'] ?? null
+            ]
+        ]);
+    })->name('debug.check.status');
+    
+    // Test payment endpoint không cần auth
+    Route::post('/test-payment', function(Request $request) {
+        Log::info('🚀 Test payment endpoint called', ['data' => $request->all()]);
+        
+        try {
+            $amount = $request->input('amount', 50000);
+            $userId = $request->input('user_id', 'test_user');
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Test payment endpoint working!',
+                'data' => [
+                    'transaction_id' => 'TEST_' . uniqid(),
+                    'amount' => $amount,
+                    'user_id' => $userId,
+                    'qr_code' => 'https://via.placeholder.com/300x300.png?text=TEST+QR',
+                    'bank_info' => [
+                        'bank_name' => 'TPBank',
+                        'account_number' => '20588668888',
+                        'account_name' => 'Sky Music Store',
+                        'content' => 'Nap tien ' . $userId
+                    ]
+                ]
+            ]);
+        } catch (\Exception $e) {
+            Log::error('❌ Test payment error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage()
+            ], 500);
+        }
+    })->withoutMiddleware(['csrf']);
+    
+    Route::post('/manual-webhook', function(Request $request) {
+        $paymentController = app(\App\Http\Controllers\Account\PaymentController::class);
+        return $paymentController->handleWebhook($request);
+    })->name('debug.manual.webhook');
+    
+    Route::get('/test-webhook/{amount?}/{uid?}', function($amount = 25000, $uid = null) {
+        $uid = $uid ?? session('firebase_uid') ?? 'test_user_123';
+        
+        // Simulate SePay webhook data
+        $webhookData = [
+            'transferAmount' => (int)$amount,
+            'content' => "Nap tien {$uid} cho tai khoan",
+            'referenceCode' => 'SEPAY_' . time(),
+            'gateway' => 'TPBank',
+            'transferTime' => now()->toISOString(),
+            'bankCode' => '970423',
+            'accountNumber' => '20588668888'
+        ];
+        
+        $paymentController = app(\App\Http\Controllers\Account\PaymentController::class);
+        $result = $paymentController->handleWebhook(new Request($webhookData));
+        
+        return response()->json([
+            'webhook_data' => $webhookData,
+            'result' => $result->getData()
+        ]);
+    })->name('debug.test.webhook');
+});

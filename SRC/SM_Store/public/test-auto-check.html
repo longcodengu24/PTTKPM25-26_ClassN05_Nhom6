@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Test Auto-Check Payment</title>
+        <style>
+            body {
+                font-family: Arial;
+                padding: 20px;
+            }
+            .status {
+                padding: 10px;
+                margin: 10px 0;
+                border-radius: 5px;
+            }
+            .pending {
+                background: #fff3cd;
+            }
+            .completed {
+                background: #d4edda;
+            }
+            button {
+                padding: 10px 20px;
+                margin: 5px;
+                cursor: pointer;
+            }
+            #logs {
+                background: #f5f5f5;
+                padding: 10px;
+                height: 300px;
+                overflow-y: scroll;
+                font-size: 12px;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>🧪 Test Auto-Check Payment</h1>
+
+        <div>
+            <button onclick="createPayment()">1. Tạo Payment</button>
+            <button onclick="sendWebhook()">2. Gửi Webhook</button>
+            <button onclick="checkStatus()">3. Check Status</button>
+        </div>
+
+        <div id="status" class="status pending">
+            Status: <span id="statusText">Waiting...</span>
+        </div>
+
+        <div>
+            <strong>Transaction ID:</strong> <span id="transactionId">-</span
+            ><br />
+            <strong>Amount:</strong> <span id="amount">-</span><br />
+            <strong>Coins:</strong> <span id="coins">-</span>
+        </div>
+
+        <h3>Logs:</h3>
+        <div id="logs"></div>
+
+        <script>
+            var currentTransactionId = null;
+            var autoCheckInterval = null;
+
+            function log(msg) {
+                var logs = document.getElementById("logs");
+                var time = new Date().toLocaleTimeString();
+                logs.innerHTML += time + " - " + msg + "<br>";
+                logs.scrollTop = logs.scrollHeight;
+                console.log(msg);
+            }
+
+            function createPayment() {
+                log("📝 Creating payment...");
+
+                fetch("/api/payment/create", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        amount: 10000,
+                        user_id: "cfT4zfDX4YRkuwd4T6X3seJhtbl1",
+                    }),
+                })
+                    .then((r) => r.json())
+                    .then((data) => {
+                        if (data.success) {
+                            currentTransactionId = data.data.transaction_id;
+                            document.getElementById(
+                                "transactionId"
+                            ).textContent = currentTransactionId;
+                            document.getElementById("amount").textContent =
+                                data.data.amount;
+                            log("✅ Payment created: " + currentTransactionId);
+                            startAutoCheck();
+                        } else {
+                            log("❌ Error: " + data.message);
+                        }
+                    });
+            }
+
+            function sendWebhook() {
+                if (!currentTransactionId) {
+                    alert("Tạo payment trước!");
+                    return;
+                }
+
+                log("📨 Sending webhook via ngrok...");
+
+                var webhookUrl =
+                    "https://48aaa0db9200.ngrok-free.app/api/sepay/webhook";
+
+                fetch(webhookUrl, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "ngrok-skip-browser-warning": "true",
+                    },
+                    body: JSON.stringify({
+                        id: Math.floor(Math.random() * 1000000),
+                        gateway: "TPBank",
+                        transactionDate: new Date().toISOString(),
+                        accountNumber: "20588668888",
+                        content: "cfT4zfDX4YRkuwd4T6X3seJhtbl1",
+                        transferType: "in",
+                        transferAmount: 10000,
+                        referenceCode: "TEST",
+                        status: "success",
+                    }),
+                })
+                    .then((r) => r.json())
+                    .then((data) => {
+                        log("✅ Webhook sent: " + JSON.stringify(data));
+                    })
+                    .catch((err) => {
+                        log("❌ Webhook error: " + err.message);
+                    });
+            }
+
+            function checkStatus() {
+                if (!currentTransactionId) {
+                    alert("Tạo payment trước!");
+                    return;
+                }
+
+                log("🔍 Checking status...");
+
+                fetch("/api/payment/status/" + currentTransactionId)
+                    .then((r) => r.json())
+                    .then((data) => {
+                        document.getElementById("statusText").textContent =
+                            data.status;
+
+                        if (data.status === "completed") {
+                            document.getElementById("status").className =
+                                "status completed";
+                            document.getElementById("coins").textContent =
+                                "+" + data.amount;
+                            log("✅ Payment COMPLETED! Amount: " + data.amount);
+                            stopAutoCheck();
+                        } else {
+                            log("⏳ Status: " + data.status);
+                        }
+                    });
+            }
+
+            function startAutoCheck() {
+                if (autoCheckInterval) clearInterval(autoCheckInterval);
+
+                log("🔄 Starting auto-check every 5 seconds...");
+
+                autoCheckInterval = setInterval(function () {
+                    log("🔍 Auto-checking...");
+                    checkStatus();
+                }, 5000);
+            }
+
+            function stopAutoCheck() {
+                if (autoCheckInterval) {
+                    clearInterval(autoCheckInterval);
+                    autoCheckInterval = null;
+                    log("⏹️ Auto-check stopped");
+                }
+            }
+
+            log("✅ Test page loaded");
+        </script>
+    </body>
+</html>

@@ -384,29 +384,47 @@ function openProductDetail(name, author, composer, price, img, video) {
         if (shopDiv && shopDiv._x_dataStack) {
             var p = shopDiv._x_dataStack[0].product;
             if (!p || !p.name) return;
+            
             console.log('DEBUG addToCart:', { seller_id: p.seller_id, currentUserId: currentUserId, product: p });
+            
+            // Kiểm tra không thể mua sheet của chính mình
             if (p.seller_id && currentUserId && p.seller_id == currentUserId) {
                 showToast('Bạn không thể thêm sheet nhạc của chính mình vào giỏ hàng!', 'error');
                 return;
             }
-            var cart = JSON.parse(localStorage.getItem('cart') || '[]');
-            // Kiểm tra sheet đã có trong giỏ chưa (theo product_id)
-            var exists = cart.some(item => item.product_id === p.product_id);
-            if (exists) {
-                showToast('Sheet nhạc này đã có trong giỏ hàng!', 'error');
-                return;
-            }
-            cart.push({
-                name: p.name,
-                author: p.author,
-                composer: p.composer,
-                price: p.price,
-                img: p.img,
-                seller_id: p.seller_id,
-                product_id: p.product_id
+
+            // Parse price (remove "đ" and convert to number)
+            var priceStr = (p.price || '').replace(/\D/g, '');
+            var priceNum = parseInt(priceStr) || 0;
+
+            // Call API to add to cart
+            fetch('/api/cart/add', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({
+                    product_id: p.product_id,
+                    name: p.name,
+                    price: priceNum,
+                    image: p.img || '',
+                    quantity: 1
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showToast('Đã thêm vào giỏ hàng!', 'success');
+                    console.log('Cart updated:', data.cart);
+                } else {
+                    showToast(data.message || 'Không thể thêm vào giỏ hàng', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error adding to cart:', error);
+                showToast('Có lỗi xảy ra khi thêm vào giỏ hàng', 'error');
             });
-            localStorage.setItem('cart', JSON.stringify(cart));
-            showToast('Đã thêm vào giỏ hàng!', 'info');
         }
     }
     </script>

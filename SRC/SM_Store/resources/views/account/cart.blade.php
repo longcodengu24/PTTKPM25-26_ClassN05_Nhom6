@@ -70,93 +70,120 @@
 </div>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+
+
+	
+	let cartData = { items: [], total_items: 0, total_amount: 0 };
+
+	// Load cart từ Firestore API
+	function loadCart() {
+		fetch('/api/cart', {
+			method: 'GET',
+			headers: {
+				'Content-Type': 'application/json',
+				'X-CSRF-TOKEN': '{{ csrf_token() }}'
+			}
+		})
+		.then(response => response.json())
+		.then(data => {
+			if (data.success) {
+				cartData = data.cart;
+				renderCart();
+			} else {
+				console.error('Error loading cart:', data.message);
+				renderCart(); // Render empty cart
+			}
+		})
+		.catch(error => {
+			console.error('Error loading cart:', error);
+			renderCart(); // Render empty cart
+		});
+	}
+
 	function renderCart() {
-		let cart = JSON.parse(localStorage.getItem('cart') || '[]');
 		const tbody = document.querySelector('table tbody');
 		tbody.innerHTML = '';
-		let total = 0;
-		if (cart.length === 0) {
+		
+		if (!cartData.items || cartData.items.length === 0) {
 			tbody.innerHTML = `<tr><td colspan='4' class='text-center py-8 text-white/80'>Giỏ hàng trống.</td></tr>`;
 		} else {
-			cart.forEach((item, idx) => {
-				let price = parseInt((item.price || '').replace(/\D/g, '')) || 0;
-				total += price;
+			cartData.items.forEach((item, idx) => {
+				let price = item.price || 0;
 				let tr = document.createElement('tr');
 				tr.className = 'border-b border-gray-100 transition';
 				tr.innerHTML = `
 					<td class='py-4 px-2 align-top'>
 						<div class='aspect-w-16 aspect-h-9 w-full rounded-lg overflow-hidden border border-gray-200'>
-							<img src='${item.img}' alt='${item.name}' class='object-cover w-full h-full'>
+							<img src='${item.image || '/img/default-product.jpg'}' alt='${item.name}' class='object-cover w-full h-full'>
 						</div>
 					</td>
 					<td class='py-4 px-2 align-top'>
 						<div class='font-semibold text-white text-lg'>${item.name}</div>
-						<div class='text-white/80 text-sm'>Tác giả: ${item.author}</div>
-						<div class='text-white/60 text-sm mb-1'>Người soạn: ${item.composer}</div>
+						<div class='text-white/80 text-sm'>Số lượng: ${item.quantity || 1}</div>
 					</td>
 					<td class='py-4 px-2 align-top text-right'>
-						<span class='font-bold text-lg text-yellow-300'>${item.price}</span>
+						<span class='font-bold text-lg text-yellow-300'>${(price * (item.quantity || 1)).toLocaleString('vi-VN')}đ</span>
 					</td>
 					<td class='py-4 px-2 align-top text-center'>
-						<button onclick='removeItem(${idx})' class='text-blue-400 hover:text-blue-600 text-2xl transition align-top' title='Xóa sản phẩm'>&times;</button>
+						<button onclick='removeItem("${item.product_id}")' class='text-blue-400 hover:text-blue-600 text-2xl transition align-top' title='Xóa sản phẩm'>&times;</button>
 					</td>
 				`;
 				tbody.appendChild(tr);
 			});
 		}
-		// Tóm tắt đơn hàng tự động
-		let discount = 0; // Có thể thay đổi logic giảm giá ở đây
+
+		// Update summary
+		let total = cartData.total_amount || 0;
+		let discount = 0;
 		let subtotal = total - discount;
-		let summary = {
-			total: total,
-			discount: discount,
-			subtotal: subtotal,
-			final: subtotal // Nếu có phí khác, cộng thêm ở đây
-		};
-		document.querySelector('.summary-total').innerText = summary.total.toLocaleString('vi-VN') + 'đ';
-		document.querySelector('.summary-discount').innerText = '- ' + summary.discount.toLocaleString('vi-VN') + 'đ';
-		document.querySelector('.summary-subtotal').innerText = summary.subtotal.toLocaleString('vi-VN') + 'đ';
-		document.querySelector('.summary-final').innerText = summary.final.toLocaleString('vi-VN') + 'đ';
-	}
-
-	window.removeItem = function(idx) {
-		let cart = JSON.parse(localStorage.getItem('cart') || '[]');
-		cart.splice(idx, 1);
-		localStorage.setItem('cart', JSON.stringify(cart));
-		renderCart();
-	}
-
-	renderCart();
-
-	// Xử lý checkout
-	window.processCheckout = function() {
-		let cart = JSON.parse(localStorage.getItem('cart') || '[]');
 		
-		if (cart.length === 0) {
+		document.querySelector('.summary-total').innerText = total.toLocaleString('vi-VN') + 'đ';
+		document.querySelector('.summary-discount').innerText = '- ' + discount.toLocaleString('vi-VN') + 'đ';
+		document.querySelector('.summary-subtotal').innerText = subtotal.toLocaleString('vi-VN') + 'đ';
+		document.querySelector('.summary-final').innerText = subtotal.toLocaleString('vi-VN') + 'đ';
+	}
+
+window.removeItem = function(productId) {
+    if (!confirm('Bạn có chắc muốn xóa sản phẩm này khỏi giỏ hàng?')) {
+        return;
+    }
+
+    fetch('/api/cart/remove', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({ product_id: productId })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // ✅ Cập nhật cartData từ response
+            cartData = data.cart || { items: [], total_items: 0, total_amount: 0 };
+            renderCart();
+            showToast(data.message || 'Đã xóa sản phẩm khỏi giỏ hàng', 'success');
+        } else {
+            showToast(data.message, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error removing item:', error);
+        showToast('Có lỗi xảy ra', 'error');
+    });
+}
+
+	// Load cart khi trang load
+	loadCart();
+
+	// Xử lý checkout - Chuyển đến trang thanh toán
+	window.processCheckout = function() {
+		if (!cartData.items || cartData.items.length === 0) {
 			showToast('Giỏ hàng trống!', 'error');
 			return;
 		}
 
-		// Confirm purchase
-		let totalAmount = 0;
-		cart.forEach(item => {
-			let price = parseInt((item.price || '').replace(/\D/g, '')) || 0;
-			totalAmount += price;
-		});
-
-		if (!confirm(`Bạn có chắc muốn mua ${cart.length} sản phẩm với tổng tiền ${totalAmount.toLocaleString('vi-VN')}đ không?`)) {
-			return;
-		}
-
-		// Prepare cart items for API
-		let cartItems = cart.map(item => ({
-			product_id: item.product_id,
-			seller_id: item.seller_id,
-			price: parseInt((item.price || '').replace(/\D/g, '')) || 0,
-			name: item.name,
-			author: item.author,
-			composer: item.composer
-		}));
+		let totalAmount = cartData.total_amount || 0;
 
 		// Show loading
 		const checkoutBtn = document.querySelector('button[onclick="processCheckout()"]');
@@ -164,43 +191,51 @@ document.addEventListener('DOMContentLoaded', function() {
 		checkoutBtn.innerHTML = 'ĐANG XỬ LÝ...';
 		checkoutBtn.disabled = true;
 
-		// Call checkout API
-		fetch('{{ route("shop.checkout") }}', {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				'X-CSRF-TOKEN': '{{ csrf_token() }}'
-			},
-			body: JSON.stringify({
-				cart_items: cartItems
+		// Step 1: Get full product details with seller_id
+		let productPromises = cartData.items.map(item => 
+			fetch('/api/products/' + item.product_id)
+				.then(res => res.json())
+		);
+
+		Promise.all(productPromises)
+			.then(productResults => {
+				// Prepare cart items with seller_id
+				let cartItems = cartData.items.map((item, index) => {
+					let productDetail = productResults[index];
+					
+					if (!productDetail.success || !productDetail.data) {
+						throw new Error('Không tìm thấy thông tin sản phẩm: ' + item.name);
+					}
+
+					let product = productDetail.data;
+					
+					if (!product.seller_id) {
+						throw new Error('Sản phẩm thiếu thông tin người bán: ' + item.name);
+					}
+
+					return {
+						product_id: item.product_id,
+						price: item.price,
+						name: item.name,
+						image: item.image,
+						seller_id: product.seller_id,
+						quantity: item.quantity || 1,
+						author: product.author || '',
+						transcribed_by: product.transcribed_by || ''
+					};
+				});
+
+				   // Lưu cart items vào sessionStorage để dùng ở trang paycart
+				   sessionStorage.setItem('checkout_cart', JSON.stringify(cartItems));
+				   // Chuyển đến trang thanh toán mới
+				   window.location.href = '{{ route("account.paycart") }}';
 			})
-		})
-		.then(response => response.json())
-		.then(data => {
-			if (data.success) {
-				// Clear cart
-				localStorage.removeItem('cart');
-				
-				// Show success message
-				showToast('Mua hàng thành công! Số xu còn lại: ' + data.data.remaining_coins.toLocaleString('vi-VN'), 'success');
-				
-				// Redirect to account/sheets after delay
-				setTimeout(() => {
-					window.location.href = '{{ route("account.sheets") }}';
-				}, 2000);
-			} else {
-				showToast(data.message, 'error');
-			}
-		})
-		.catch(error => {
-			console.error('Checkout error:', error);
-			showToast('Có lỗi xảy ra trong quá trình mua hàng', 'error');
-		})
-		.finally(() => {
-			// Restore button
-			checkoutBtn.innerHTML = originalText;
-			checkoutBtn.disabled = false;
-		});
+			.catch(error => {
+				console.error('Checkout error:', error);
+				showToast(error.message || 'Có lỗi xảy ra khi chuẩn bị thanh toán', 'error');
+				checkoutBtn.innerHTML = originalText;
+				checkoutBtn.disabled = false;
+			});
 	}
 
 	// Toast notification function
@@ -215,6 +250,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 		setTimeout(() => {
 			toast.style.opacity = '0';
+			toast.style.transition = 'opacity 0.4s';
 			setTimeout(() => document.body.removeChild(toast), 400);
 		}, 4000);
 	}

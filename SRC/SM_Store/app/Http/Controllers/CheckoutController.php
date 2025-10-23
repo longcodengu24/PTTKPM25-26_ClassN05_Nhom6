@@ -22,6 +22,33 @@ class CheckoutController extends Controller
     }
 
     /**
+     * Hiển thị trang checkout
+     */
+    public function showCheckout(Request $request)
+    {
+        try {
+            $buyerId = session('firebase_uid');
+            if (!$buyerId) {
+                return redirect()->route('login')->with('error', 'Bạn cần đăng nhập để thanh toán');
+            }
+
+            // Lấy thông tin user
+            $userResult = $this->firestoreService->getDocument('users', $buyerId);
+            $userData = $userResult['success'] ? $userResult['data'] : [];
+
+            // Cart items sẽ được load từ sessionStorage bằng JavaScript
+            return view('shop.checkout', [
+                'userData' => $userData,
+                'userCoins' => $userData['coins'] ?? 0
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error showing checkout: ' . $e->getMessage());
+            return redirect()->route('account.cart')->with('error', 'Có lỗi xảy ra');
+        }
+    }
+
+    /**
      * Xử lý checkout giỏ hàng
      */
     public function processCheckout(Request $request)
@@ -63,14 +90,15 @@ class CheckoutController extends Controller
             }
 
             // Lấy thông tin người mua
-            $buyer = $this->firestoreService->getDocument('users', $buyerId);
-            if (!$buyer) {
+            $buyerResult = $this->firestoreService->getDocument('users', $buyerId);
+            if (!$buyerResult['success']) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Không tìm thấy thông tin người dùng'
                 ], 404);
             }
 
+            $buyer = $buyerResult['data'];
             $buyerCoins = $buyer['coins'] ?? 0;
 
             // Kiểm tra đủ xu
@@ -112,9 +140,10 @@ class CheckoutController extends Controller
 
                 // Cộng xu cho seller (fix: accumulate all products from same seller)
                 if (!isset($sellersUpdated[$sellerId])) {
-                    $seller = $this->firestoreService->getDocument('users', $sellerId);
+                    $sellerResult = $this->firestoreService->getDocument('users', $sellerId);
+                    $sellerData = $sellerResult['success'] ? $sellerResult['data'] : [];
                     $sellersUpdated[$sellerId] = [
-                        'current_coins' => $seller['coins'] ?? 0,
+                        'current_coins' => $sellerData['coins'] ?? 0,
                         'earned_coins' => 0
                     ];
                 }
@@ -137,9 +166,13 @@ class CheckoutController extends Controller
                     'status' => 'completed'
                 ];
 
-                // Lưu vào collection purchases
-                $purchaseId = $this->firestoreService->createDocument('purchases', $purchaseData);
-                $purchasedItems[] = array_merge($purchaseData, ['id' => $purchaseId]);
+                // Lưu vào collection purchases với ID tự động
+                $purchaseId = 'purchase_' . time() . '_' . substr($buyerId, 0, 8) . '_' . substr($productId, 0, 8);
+                $purchaseResult = $this->firestoreService->createDocument('purchases', $purchaseId, $purchaseData);
+                
+                if ($purchaseResult['success']) {
+                    $purchasedItems[] = array_merge($purchaseData, ['id' => $purchaseId]);
+                }
 
                 // Increment sold count cho product
                 $this->productModel->incrementSoldCount($productId);
@@ -253,7 +286,11 @@ class CheckoutController extends Controller
                 'read' => false
             ]);
 
-            return $this->firestoreService->createDocument('activities', $activityData);
+            // Tạo ID tự động cho activity
+            $activityId = 'activity_' . time() . '_' . uniqid();
+            $result = $this->firestoreService->createDocument('activities', $activityId, $activityData);
+            
+            return $result['success'] ? $activityId : null;
         } catch (\Exception $e) {
             Log::error('Error creating activity: ' . $e->getMessage());
             return null;
