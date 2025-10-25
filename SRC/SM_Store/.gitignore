@@ -23,3 +23,5 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 /SRC/SM_Store/resources/key/firebasekey.json
+/resources/key/firebase.json
+resources/key/firebase.json
