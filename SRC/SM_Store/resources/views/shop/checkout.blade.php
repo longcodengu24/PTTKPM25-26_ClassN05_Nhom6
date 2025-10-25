@@ -1,5 +1,4 @@
 @extends('layouts.app')
-
 @section('content')
 <div class="max-w-6xl mx-auto px-2 py-10">
 	<div class="game-card rounded-2xl p-8">
