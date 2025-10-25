@@ -3,15 +3,18 @@
 namespace App\Services;
 
 use App\Services\FirestoreSimple;
+use App\Services\SheetActivityService;
 use Illuminate\Support\Facades\Log;
 
 class PurchaseService
 {
     protected $firestoreService;
+    protected $sheetActivityService;
 
     public function __construct(FirestoreSimple $firestoreService = null)
     {
         $this->firestoreService = $firestoreService ?: new FirestoreSimple();
+        $this->sheetActivityService = new SheetActivityService();
     }
 
     /**
@@ -20,15 +23,8 @@ class PurchaseService
     public function hasPurchasedProduct(string $userId, string $productId): bool
     {
         try {
-            // Query purchases collection để tìm purchase record
-            $purchases = $this->firestoreService->queryDocuments('purchases', [
-                'where' => [
-                    ['buyer_id', '==', $userId],
-                    ['product_id', '==', $productId]
-                ]
-            ]);
-
-            return count($purchases) > 0;
+            // Sử dụng UserPurchaseService để kiểm tra trong purchases subcollection
+            return $this->userPurchaseService->hasPurchasedProduct($userId, $productId);
         } catch (\Exception $e) {
             Log::error('Error checking purchase history', [
                 'user_id' => $userId,
@@ -45,15 +41,12 @@ class PurchaseService
     public function getUserPurchasedProducts(string $userId): array
     {
         try {
-            $purchases = $this->firestoreService->queryDocuments('purchases', [
-                'where' => [
-                    ['buyer_id', '==', $userId]
-                ]
-            ]);
-
-            return array_map(function ($purchase) {
-                return $purchase['data']['product_id'] ?? null;
-            }, $purchases);
+            // Sử dụng UserPurchaseService để lấy sheets từ purchases subcollection
+            $sheets = $this->userPurchaseService->getUserSheets($userId);
+            
+            return array_map(function ($sheet) {
+                return $sheet['data']['product_id'] ?? null;
+            }, $sheets);
         } catch (\Exception $e) {
             Log::error('Error getting user purchased products', [
                 'user_id' => $userId,

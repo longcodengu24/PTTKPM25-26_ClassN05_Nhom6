@@ -44,7 +44,7 @@ class LoadUserData
                     'email' => $user->email ?? session('email', ''),
                     'avatar' => $user->photoUrl ?? '/img/default-avatar.png',
                     'coins' => $firestoreUser['coins'] ?? session('coins', 0),
-                    'role' => $firestoreUser['role'] ?? session('role', 'user')
+                    'role' => $user->customClaims['role'] ?? session('role', 'user') // Đọc role từ Firebase custom claims
                 ];
 
                 // Cập nhật session

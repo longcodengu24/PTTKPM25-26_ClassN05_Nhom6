@@ -38,8 +38,8 @@
                         🪙 {{ number_format(isset($currentUser) ? $currentUser['coins'] : session('coins', 0)) }}
                     </div>
                 @endif
-                
-                <a href="{{ url('/shop/cart') }}" 
+
+                <a href="{{ url('/account/cart') }}" 
                    class="bg-white/10 backdrop-blur-sm text-white p-2 rounded-lg hover:bg-white/20 transition-all duration-300 border border-white/20" 
                    title="Giỏ hàng">
                     🛒

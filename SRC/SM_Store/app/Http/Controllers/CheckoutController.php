@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Services\FirestoreSimple;
 use App\Services\PurchaseService;
+use App\Services\UserPurchaseService;
+use App\Services\SheetActivityService;
 use App\Models\Product;
 use Illuminate\Support\Facades\Log;
 
@@ -13,12 +15,16 @@ class CheckoutController extends Controller
     private $firestoreService;
     private $productModel;
     private $purchaseService;
+    private $userPurchaseService;
+    private $sheetActivityService;
 
     public function __construct()
     {
         $this->firestoreService = new FirestoreSimple();
         $this->productModel = new Product();
         $this->purchaseService = new PurchaseService($this->firestoreService);
+        $this->userPurchaseService = new UserPurchaseService($this->firestoreService);
+        $this->sheetActivityService = new SheetActivityService($this->firestoreService);
     }
 
     /**
@@ -93,23 +99,15 @@ class CheckoutController extends Controller
             }
 
             // Lấy thông tin người mua
-<<<<<<< HEAD
             $buyerResult = $this->firestoreService->getDocument('users', $buyerId);
             if (!$buyerResult['success']) {
-=======
-            $buyer = $this->firestoreService->getDocument('users', $buyerId);
-            if (!$buyer) {
->>>>>>> 4e0fcd0d9d0af40ad9cee5488658eb3cda4b9836
                 return response()->json([
                     'success' => false,
                     'message' => 'Không tìm thấy thông tin người dùng'
                 ], 404);
             }
 
-<<<<<<< HEAD
             $buyer = $buyerResult['data'];
-=======
->>>>>>> 4e0fcd0d9d0af40ad9cee5488658eb3cda4b9836
             $buyerCoins = $buyer['coins'] ?? 0;
 
             // Kiểm tra đủ xu
@@ -151,16 +149,10 @@ class CheckoutController extends Controller
 
                 // Cộng xu cho seller (fix: accumulate all products from same seller)
                 if (!isset($sellersUpdated[$sellerId])) {
-<<<<<<< HEAD
                     $sellerResult = $this->firestoreService->getDocument('users', $sellerId);
                     $sellerData = $sellerResult['success'] ? $sellerResult['data'] : [];
                     $sellersUpdated[$sellerId] = [
                         'current_coins' => $sellerData['coins'] ?? 0,
-=======
-                    $seller = $this->firestoreService->getDocument('users', $sellerId);
-                    $sellersUpdated[$sellerId] = [
-                        'current_coins' => $seller['coins'] ?? 0,
->>>>>>> 4e0fcd0d9d0af40ad9cee5488658eb3cda4b9836
                         'earned_coins' => 0
                     ];
                 }
@@ -168,7 +160,7 @@ class CheckoutController extends Controller
                 // Cộng dồn xu cho seller này
                 $sellersUpdated[$sellerId]['earned_coins'] += $itemPrice;
 
-                // Lưu thông tin purchase cho buyer
+                // Lưu thông tin purchase cho buyer theo cấu trúc subcollection
                 $purchaseData = [
                     'product_id' => $productId,
                     'product_name' => $item['name'],
@@ -178,51 +170,59 @@ class CheckoutController extends Controller
                     'transaction_id' => $transactionId,
                     'purchased_at' => now()->toISOString(),
                     'file_path' => $product['file_path'] ?? '',
-                    'image_path' => $product['image_path'] ?? '',
+                    'image_path' => is_array($product['image_path'] ?? null) ? '' : ($product['image_path'] ?? ''),
                     'author' => $product['author'] ?? '',
-                    'status' => 'completed'
+                    'status' => 'completed',
+                    'category' => $product['category'] ?? '',
+                    'description' => $product['description'] ?? ''
                 ];
 
-<<<<<<< HEAD
-                // Lưu vào collection purchases với ID tự động
-                $purchaseId = 'purchase_' . time() . '_' . substr($buyerId, 0, 8) . '_' . substr($productId, 0, 8);
-                $purchaseResult = $this->firestoreService->createDocument('purchases', $purchaseId, $purchaseData);
+                // Lưu vào subcollection sheets (theo cấu trúc purchases/{uid}/sheets)
+                $result = $this->userPurchaseService->savePurchase($buyerId, $purchaseData);
                 
-                if ($purchaseResult['success']) {
-                    $purchasedItems[] = array_merge($purchaseData, ['id' => $purchaseId]);
+                if ($result['success']) {
+                    $purchasedItems[] = array_merge($purchaseData, ['id' => $result['sheet_id']]);
+                    Log::info('✅ Sheet saved to purchases from checkout:', [
+                        'product' => $item['name'], 
+                        'sheet_id' => $result['sheet_id']
+                    ]);
+                } else {
+                    Log::error("❌ Failed to save sheet to purchases from checkout: {$productId}", [
+                        'error' => $result['error']
+                    ]);
                 }
-=======
-                // Lưu vào collection purchases
-                $purchaseId = $this->firestoreService->createDocument('purchases', $purchaseData);
-                $purchasedItems[] = array_merge($purchaseData, ['id' => $purchaseId]);
->>>>>>> 4e0fcd0d9d0af40ad9cee5488658eb3cda4b9836
 
                 // Increment sold count cho product
                 $this->productModel->incrementSoldCount($productId);
 
                 // Tạo activity cho seller
-                $this->createActivity([
-                    'user_id' => $sellerId,
-                    'type' => 'sale',
-                    'title' => 'Bán sheet thành công',
-                    'description' => 'Bạn đã bán "' . $item['name'] . '" cho ' . ($buyer['displayName'] ?? 'khách hàng'),
-                    'amount' => '+' . number_format($itemPrice) . ' xu',
-                    'transaction_id' => $transactionId,
-                    'product_id' => $productId,
-                    'related_user' => $buyerId
-                ]);
+                $activityService = new \App\Services\ActivityService();
+                $activityService->createActivity(
+                    $sellerId,
+                    'sale',
+                    'Bạn đã bán "' . $item['name'] . '" cho ' . ($buyer['displayName'] ?? 'khách hàng'),
+                    [
+                        'amount' => $itemPrice,
+                        'transaction_id' => $transactionId,
+                        'product_id' => $productId,
+                        'buyer_id' => $buyerId,
+                        'transaction_type' => 'sale'
+                    ]
+                );
 
                 // Tạo activity cho buyer
-                $this->createActivity([
-                    'user_id' => $buyerId,
-                    'type' => 'purchase',
-                    'title' => 'Mua sheet thành công',
-                    'description' => 'Bạn đã mua "' . $item['name'] . '"',
-                    'amount' => '-' . number_format($itemPrice) . ' xu',
-                    'transaction_id' => $transactionId,
-                    'product_id' => $productId,
-                    'related_user' => $sellerId
-                ]);
+                $activityService->createActivity(
+                    $buyerId,
+                    'purchase',
+                    'Bạn đã mua "' . $item['name'] . '"',
+                    [
+                        'total_amount' => $itemPrice,
+                        'transaction_id' => $transactionId,
+                        'product_id' => $productId,
+                        'seller_id' => $sellerId,
+                        'transaction_type' => 'purchase'
+                    ]
+                );
             }
 
             // Cập nhật xu cho tất cả sellers (fix: update all accumulated coins)
@@ -298,29 +298,4 @@ class CheckoutController extends Controller
         }
     }
 
-    /**
-     * Tạo activity record
-     */
-    private function createActivity($data)
-    {
-        try {
-            $activityData = array_merge($data, [
-                'created_at' => now()->toISOString(),
-                'read' => false
-            ]);
-
-<<<<<<< HEAD
-            // Tạo ID tự động cho activity
-            $activityId = 'activity_' . time() . '_' . uniqid();
-            $result = $this->firestoreService->createDocument('activities', $activityId, $activityData);
-            
-            return $result['success'] ? $activityId : null;
-=======
-            return $this->firestoreService->createDocument('activities', $activityData);
->>>>>>> 4e0fcd0d9d0af40ad9cee5488658eb3cda4b9836
-        } catch (\Exception $e) {
-            Log::error('Error creating activity: ' . $e->getMessage());
-            return null;
-        }
-    }
 }

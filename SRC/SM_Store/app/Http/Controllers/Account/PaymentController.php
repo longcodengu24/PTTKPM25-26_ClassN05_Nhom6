@@ -5,16 +5,22 @@ namespace App\Http\Controllers\Account;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use App\Services\FirestoreRestService;
+use App\Services\UserPurchaseService;
+use App\Services\SheetActivityService;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class PaymentController extends Controller
 {
     protected $firestore;
+    protected $userPurchaseService;
+    protected $sheetActivityService;
 
-    public function __construct(FirestoreRestService $firestore)
+    public function __construct(FirestoreRestService $firestore, UserPurchaseService $userPurchaseService, SheetActivityService $sheetActivityService)
     {
         $this->firestore = $firestore;
+        $this->userPurchaseService = $userPurchaseService;
+        $this->sheetActivityService = $sheetActivityService;
     }
 
     public function showDepositForm()
@@ -124,16 +130,26 @@ class PaymentController extends Controller
             ]);
 
             if ($balanceResult['success']) {
+                // Tạo activity cho việc nạp coins thành công
+                $activityService = new \App\Services\ActivityService();
+                $activityService->createActivity(
+                    $userId,
+                    'deposit',
+                    "Nạp thành công " . number_format($amount) . " Sky Coins vào tài khoản qua SePay",
+                    [
+                        'amount' => $amount,
+                        'balance' => $balanceResult['new_balance'],
+                        'sepay_id' => $sepayId,
+                        'reference_code' => $referenceCode,
+                        'source' => 'sepay_webhook',
+                        'transaction_type' => 'deposit'
+                    ]
+                );
+                
                 Log::info('💰 Coins added successfully', [
                     'user_id' => $userId,
                     'amount' => $amount,
                     'new_balance' => $balanceResult['new_balance']
-                ]);
-
-                $this->logActivity($userId, 'deposit_completed', [
-                    'amount' => $amount,
-                    'balance' => $balanceResult['new_balance'],
-                    'sepay_id' => $sepayId
                 ]);
 
                 return response()->json(['success' => true]);
@@ -264,8 +280,7 @@ class PaymentController extends Controller
 
 
 
-
-    public function confirmCartPayment(Request $request)
+public function confirmCartPayment(Request $request)
 {
     try {
         $userId = session('firebase_uid');
@@ -273,107 +288,224 @@ class PaymentController extends Controller
             return response()->json(['success' => false, 'message' => 'Bạn cần đăng nhập'], 401);
         }
 
-        $cartItems = $request->input('cart_items', []);
-        if (empty($cartItems)) {
-            return response()->json(['success' => false, 'message' => 'Giỏ hàng trống!'], 400);
-        }
-
-        // 1️⃣ Lấy thông tin người mua
-        $buyerDoc = $this->firestore->getDocument('users', $userId);
-        if (!$buyerDoc['success']) {
-            return response()->json(['success' => false, 'message' => 'Không tìm thấy người mua'], 404);
-        }
-        $buyer = $buyerDoc['data'];
-        $buyerCoins = $buyer['coins'] ?? 0;
-
-        // 2️⃣ Tính tổng tiền
-        $totalAmount = 0;
-        foreach ($cartItems as $item) {
-            $totalAmount += ($item['price'] ?? 0) * ($item['quantity'] ?? 1);
-        }
-
-        // 3️⃣ Kiểm tra số dư
-        if ($buyerCoins < $totalAmount) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Số dư không đủ. Bạn cần thêm ' . number_format($totalAmount - $buyerCoins) . ' xu để thanh toán.'
-            ]);
-        }
-
-        // 4️⃣ Trừ xu người mua
-        $buyer['coins'] = $buyerCoins - $totalAmount;
-        $this->firestore->updateDocument('users', $userId, $buyer);
-
-        // 5️⃣ Xử lý từng sản phẩm
-        foreach ($cartItems as $item) {
-            $sellerId = $item['seller_id'] ?? null;
-            $price = ($item['price'] ?? 0) * ($item['quantity'] ?? 1);
-
-            // Cộng xu cho người bán
-            if ($sellerId) {
-                $sellerDoc = $this->firestore->getDocument('users', $sellerId);
-                if ($sellerDoc['success']) {
-                    $seller = $sellerDoc['data'];
-                    $seller['coins'] = ($seller['coins'] ?? 0) + $price;
-                    $this->firestore->updateDocument('users', $sellerId, $seller);
-
-                    $this->logActivity($sellerId, 'receive_payment', [
-                        'from_user' => $userId,
-                        'product' => $item['name'],
-                        'amount' => $price
-                    ]);
-                }
-            }
-
-            // Lưu vào listsheets
-            $userDoc = $this->firestore->getDocument('users', $userId);
-            $userData = $userDoc['data'] ?? [];
-            $listsheets = $userData['listsheets'] ?? [];
-
-            $listsheets[$item['product_id']] = [
-                'title' => $item['name'] ?? '',
-                'category' => $item['category'] ?? '',
-                'price' => $item['price'] ?? 0,
-                'file_url' => $item['file_url'] ?? '',
-                'seller_name' => $item['seller_name'] ?? '',
-                'seller_uid' => $item['seller_id'] ?? '',
-                'description' => $item['description'] ?? '',
-                'rating' => $item['rating'] ?? 0,
-                'status' => 'active',
-                'purchased_at' => now()->toIso8601String()
-            ];
-
-            $userData['listsheets'] = $listsheets;
-            $this->firestore->updateDocument('users', $userId, $userData);
-        }
-
-        // 6️⃣ Log người mua
-        $this->logActivity($userId, 'purchase_completed', [
-            'total_amount' => $totalAmount,
-            'items' => $cartItems
+        $request->validate([
+            'items' => 'required|array',
+            'items.*.product_id' => 'required|string',
+            'items.*.seller_id' => 'required|string',
+            'items.*.price' => 'required|numeric|min:0',
+            'items.*.name' => 'required|string',
+            'total_amount' => 'required|numeric|min:0'
         ]);
 
-        // ✅ 7️⃣ XÓA HOÀN TOÀN GIỎ HÀNG khỏi Firestore
-        $deleteResult = $this->firestore->deleteDocument('carts', $userId);
-        
-        if ($deleteResult['success']) {
-            Log::info("🗑️ Cart deleted after successful payment for user: {$userId}");
-        } else {
-            Log::warning("⚠️ Could not delete cart after payment", ['user_id' => $userId]);
+        $items = $request->items;
+        $totalAmount = floatval($request->total_amount);
+
+        Log::info('💳 Payment request:', [
+            'user_id' => $userId,
+            'items_count' => count($items),
+            'total_amount' => $totalAmount
+        ]);
+
+        // 1️⃣ Kiểm tra số dư COINS (không phải balance)
+        $userDoc = $this->firestore->getDocument('users', $userId);
+        if (!$userDoc['success']) {
+            return response()->json(['success' => false, 'message' => 'Không tìm thấy thông tin người dùng'], 404);
         }
+
+        $userData = $userDoc['data'];
+        $currentCoins = floatval($userData['coins'] ?? 0); // ✅ ĐỔI THÀNH 'coins'
+
+        Log::info('💰 Checking balance:', [
+            'current_coins' => $currentCoins,
+            'required_amount' => $totalAmount
+        ]);
+
+        if ($currentCoins < $totalAmount) {
+            return response()->json([
+                'success' => false, 
+                'message' => 'Số dư không đủ! Hiện tại: ' . number_format($currentCoins) . 'đ, Cần: ' . number_format($totalAmount) . 'đ',
+                'current_balance' => $currentCoins,
+                'required_amount' => $totalAmount
+            ], 400);
+        }
+
+        // 2️⃣ Trừ COINS người mua (GIỮ NGUYÊN các field khác)
+        $newCoins = $currentCoins - $totalAmount;
+        $userData['coins'] = $newCoins; // ✅ Update field 'coins'
+        
+        $updateBalanceResult = $this->firestore->updateDocument('users', $userId, $userData);
+
+        if (!$updateBalanceResult['success']) {
+            return response()->json(['success' => false, 'message' => 'Không thể trừ tiền từ tài khoản'], 500);
+        }
+
+        Log::info('✅ Coins deducted:', [
+            'old_coins' => $currentCoins,
+            'new_coins' => $newCoins
+        ]);
+
+        // 3️⃣ Tạo transaction_id duy nhất
+        $transactionId = 'txn_' . time() . '_' . substr($userId, 0, 10);
+
+        // 4️⃣ Lưu từng sản phẩm vào purchases theo cấu trúc subcollection
+        $sheetIds = [];
+        $sellerPayments = [];
+
+        foreach ($items as $item) {
+            $productDoc = $this->firestore->getDocument('products', $item['product_id']);
+            
+            if (!$productDoc['success']) {
+                Log::warning("⚠️ Product not found: {$item['product_id']}");
+                continue;
+            }
+
+            $product = $productDoc['data'];
+
+            // ✅ Tạo purchase data theo cấu trúc subcollection
+            $purchaseData = [
+                'author' => $product['author'] ?? '',
+                'buyer_id' => $userId,
+                'file_path' => $product['file_path'] ?? '',
+                'image_path' => is_array($product['image_path'] ?? null) ? '' : ($product['image_path'] ?? ''),
+                'price' => floatval($item['price']),
+                'product_id' => $item['product_id'],
+                'product_name' => $item['name'],
+                'purchased_at' => now()->toIso8601String(),
+                'seller_id' => $item['seller_id'],
+                'status' => 'completed',
+                'transaction_id' => $transactionId,
+                'category' => $product['category'] ?? '',
+                'description' => $product['description'] ?? ''
+            ];
+
+            // Lưu purchase vào subcollection sheets (theo cấu trúc purchases/{uid}/sheets)
+            $result = $this->userPurchaseService->savePurchase($userId, $purchaseData);
+
+            if ($result['success']) {
+                $sheetIds[] = $result['sheet_id'];
+                Log::info('✅ Sheet created in purchases:', ['product' => $item['name'], 'sheet_id' => $result['sheet_id']]);
+
+                // Tính tiền cho seller
+                $sellerId = $item['seller_id'];
+                if (!isset($sellerPayments[$sellerId])) {
+                    $sellerPayments[$sellerId] = 0;
+                }
+                $sellerPayments[$sellerId] += floatval($item['price']) * intval($item['quantity'] ?? 1);
+            } else {
+                Log::error("❌ Failed to create sheet in purchases for: {$item['product_id']}", ['error' => $result['error']]);
+            }
+        }
+
+        // 5️⃣ Cộng COINS cho các seller (GIỮ NGUYÊN các field khác)
+        foreach ($sellerPayments as $sellerId => $amount) {
+            $sellerDoc = $this->firestore->getDocument('users', $sellerId);
+            if ($sellerDoc['success']) {
+                $sellerData = $sellerDoc['data'];
+                $sellerCoins = floatval($sellerData['coins'] ?? 0);
+                $newSellerCoins = $sellerCoins + $amount;
+                
+                $sellerData['coins'] = $newSellerCoins; // ✅ Update field 'coins'
+                $this->firestore->updateDocument('users', $sellerId, $sellerData);
+
+                Log::info('💰 Seller payment:', [
+                    'seller_id' => $sellerId,
+                    'amount' => $amount,
+                    'new_coins' => $newSellerCoins
+                ]);
+            }
+        }
+
+        // 6️⃣ Xóa giỏ hàng
+        $this->firestore->deleteDocument('carts', $userId);
+        Log::info('🗑️ Cart cleared for user: ' . $userId);
+
+        // 7️⃣ Lưu transaction log
+        $this->firestore->createDocument('transactions', null, [
+            'user_id' => $userId,
+            'type' => 'purchase',
+            'amount' => -$totalAmount,
+            'description' => 'Mua ' . count($items) . ' sheet nhạc',
+            'transaction_id' => $transactionId,
+            'created_at' => now()->toIso8601String(),
+            'status' => 'completed'
+        ]);
+
+        // 8️⃣ Tạo activity cho việc mua hàng thành công
+        $activityService = new \App\Services\ActivityService();
+        $activityService->createActivity(
+            $userId,
+            'purchase',
+            "Bạn đã mua thành công " . count($items) . " sheet nhạc với tổng giá trị " . number_format($totalAmount) . " coins",
+            [
+                'total_amount' => $totalAmount,
+                'items_count' => count($items),
+                'transaction_id' => $transactionId,
+                'sheet_ids_string' => implode(', ', $sheetIds) // Convert array to string
+            ]
+        );
 
         return response()->json([
             'success' => true,
             'message' => 'Thanh toán thành công!',
-            'data' => [
-                'remaining_coins' => $buyer['coins'],
-                'total_spent' => $totalAmount
-            ]
+            'transaction_id' => $transactionId,
+            'new_balance' => $newCoins,
+            'sheets' => $sheetIds
         ]);
 
-    } catch (\Exception $e) {
-        Log::error('❌ confirmCartPayment error: ' . $e->getMessage());
-        return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+    } catch (\Throwable $e) {
+        Log::error('❌ Error confirmCartPayment: ' . $e->getMessage());
+        Log::error($e->getTraceAsString());
+        
+        return response()->json([
+            'success' => false, 
+            'message' => 'Có lỗi xảy ra: ' . $e->getMessage()
+        ], 500);
+    }
+}
+
+
+public function getUserBalance()
+{
+    try {
+        $userId = session('firebase_uid');
+        
+        Log::info('🔍 getUserBalance called', ['user_id' => $userId]);
+        
+        if (!$userId) {
+            return response()->json([
+                'success' => false, 
+                'message' => 'Chưa đăng nhập'
+            ], 401);
+        }
+
+        $userDoc = $this->firestore->getDocument('users', $userId);
+        
+        if (!$userDoc['success']) {
+            Log::error('❌ User not found in getUserBalance', ['user_id' => $userId]);
+            return response()->json([
+                'success' => false, 
+                'message' => 'Không tìm thấy người dùng'
+            ], 404);
+        }
+
+        $coins = floatval($userDoc['data']['coins'] ?? 0);
+        
+        Log::info('✅ getUserBalance success', [
+            'user_id' => $userId,
+            'coins' => $coins
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'balance' => $coins,
+            'coins' => $coins
+        ]);
+    } catch (\Throwable $e) {
+        Log::error('❌ Error getUserBalance: ' . $e->getMessage());
+        return response()->json([
+            'success' => false, 
+            'message' => 'Lỗi server: ' . $e->getMessage()
+        ], 500);
     }
 }
 

@@ -32,9 +32,8 @@ class OrderController extends Controller
             // Lấy search query từ request
             $searchQuery = $request->get('search', '');
 
-            // Lấy tất cả purchases từ Firestore
+            // Lấy tất cả purchases từ collection purchases
             $purchasesResponse = $this->firestoreService->listDocuments('purchases');
-
             $orders = collect();
             $totalRevenue = 0;
 
@@ -184,7 +183,7 @@ class OrderController extends Controller
                 return redirect()->route('login')->with('error', 'Vui lòng đăng nhập');
             }
 
-            // Lấy thông tin đơn hàng
+            // Lấy đơn hàng từ collection purchases
             $order = $this->firestoreService->getDocument('purchases', $id);
 
             if (!$order) {
@@ -247,7 +246,7 @@ class OrderController extends Controller
                 ], 401);
             }
 
-            // Lấy đơn hàng
+            // Lấy đơn hàng từ collection purchases
             $order = $this->firestoreService->getDocument('purchases', $id);
 
             if (!$order) {

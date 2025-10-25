@@ -31,61 +31,124 @@ class FirestoreSimple
     }
 
     /**
-     * 🧾 Lấy danh sách document trong collection
+     * 🧾 Lấy danh sách document trong collection (hỗ trợ subcollection)
      */
     public function listDocuments(string $collection, int $pageSize = 50)
     {
-        $url = "{$this->baseUrl}/{$collection}?pageSize={$pageSize}";
+        // Xử lý subcollection path (ví dụ: activities/{uid})
+        $collectionPath = $this->normalizeCollectionPath($collection);
+        $url = "{$this->baseUrl}/{$collectionPath}?pageSize={$pageSize}";
+        
+        \Illuminate\Support\Facades\Log::info('Listing documents from Firestore', [
+            'collection_path' => $collectionPath,
+            'url' => $url
+        ]);
+        
         $res = Http::get($url);
 
         if ($res->failed()) {
+            \Illuminate\Support\Facades\Log::error('Firestore listDocuments failed', [
+                'collection_path' => $collectionPath,
+                'error' => $res->body(),
+                'status' => $res->status()
+            ]);
             throw new \Exception('Firestore listDocuments error: ' . $res->body());
         }
 
-        return $res->json();
+        $response = $res->json();
+        \Illuminate\Support\Facades\Log::info('Documents listed successfully', [
+            'collection_path' => $collectionPath,
+            'count' => count($response['documents'] ?? [])
+        ]);
+
+        return $response;
     }
 
     /**
-     * ➕ Thêm document mới vào Firestore
+     * ➕ Thêm document mới vào Firestore (hỗ trợ subcollection)
      */
     public function createDocument(string $collection, array $data)
     {
         $fields = $this->formatFields($data);
 
-        $url = "{$this->baseUrl}/{$collection}?key={$this->apiKey}";
+        // Xử lý subcollection path (ví dụ: activities/{uid})
+        $collectionPath = $this->normalizeCollectionPath($collection);
+        $url = "{$this->baseUrl}/{$collectionPath}?key={$this->apiKey}";
+        
+        \Illuminate\Support\Facades\Log::info('Creating document in Firestore', [
+            'collection_path' => $collectionPath,
+            'url' => $url,
+            'data_keys' => array_keys($data)
+        ]);
+        
         $res = Http::post($url, ['fields' => $fields]);
 
         if ($res->failed()) {
+            \Illuminate\Support\Facades\Log::error('Firestore createDocument failed', [
+                'collection_path' => $collectionPath,
+                'error' => $res->body(),
+                'status' => $res->status()
+            ]);
             throw new \Exception('Firestore createDocument error: ' . $res->body());
         }
 
         $response = $res->json();
-        return basename($response['name'] ?? '');
+        $documentId = basename($response['name'] ?? '');
+        
+        \Illuminate\Support\Facades\Log::info('Document created successfully', [
+            'collection_path' => $collectionPath,
+            'document_id' => $documentId
+        ]);
+        
+        return $documentId;
     }
 
     /**
-     * 📄 Tạo document với ID cụ thể
+     * 📄 Tạo document với ID cụ thể (hỗ trợ subcollection)
      */
     public function createDocumentWithId(string $collection, string $documentId, array $data)
     {
         $fields = $this->formatFields($data);
 
-        $url = "{$this->baseUrl}/{$collection}/{$documentId}?key={$this->apiKey}";
+        // Xử lý subcollection path (ví dụ: activities/{uid})
+        $collectionPath = $this->normalizeCollectionPath($collection);
+        $url = "{$this->baseUrl}/{$collectionPath}/{$documentId}?key={$this->apiKey}";
+        
+        \Illuminate\Support\Facades\Log::info('Creating document with ID in Firestore', [
+            'collection_path' => $collectionPath,
+            'document_id' => $documentId,
+            'url' => $url
+        ]);
+        
         $res = Http::patch($url, ['fields' => $fields]);
 
         if ($res->failed()) {
+            \Illuminate\Support\Facades\Log::error('Firestore createDocumentWithId failed', [
+                'collection_path' => $collectionPath,
+                'document_id' => $documentId,
+                'error' => $res->body(),
+                'status' => $res->status()
+            ]);
             throw new \Exception("Firestore createDocumentWithId error: " . $res->body());
         }
+
+        \Illuminate\Support\Facades\Log::info('Document with ID created successfully', [
+            'collection_path' => $collectionPath,
+            'document_id' => $documentId
+        ]);
 
         return $documentId;
     }
 
     /**
-     * 📄 Lấy một document theo ID
+     * 📄 Lấy một document theo ID (hỗ trợ subcollection)
      */
     public function getDocument(string $collection, string $documentId)
     {
-        $url = "{$this->baseUrl}/{$collection}/{$documentId}?key={$this->apiKey}";
+        // Xử lý subcollection path (ví dụ: activities/{uid})
+        $collectionPath = $this->normalizeCollectionPath($collection);
+        $url = "{$this->baseUrl}/{$collectionPath}/{$documentId}?key={$this->apiKey}";
+        
         $res = Http::get($url);
 
         if ($res->status() === 404) {
@@ -101,7 +164,7 @@ class FirestoreSimple
     }
 
     /**
-     * 🔄 Cập nhật document với validation (FIX: sử dụng updateMask để tránh ghi đè)
+     * 🔄 Cập nhật document với validation (FIX: sử dụng updateMask để tránh ghi đè) - hỗ trợ subcollection
      */
     public function updateDocument(string $collection, string $documentId, array $data)
     {
@@ -115,17 +178,26 @@ class FirestoreSimple
             return "updateMask.fieldPaths={$field}";
         }, array_keys($data));
         $updateMaskQuery = implode('&', $fieldPaths);
-        $url = "{$this->baseUrl}/{$collection}/{$documentId}?{$updateMaskQuery}&key={$this->apiKey}";
+        
+        // Xử lý subcollection path (ví dụ: activities/{uid})
+        $collectionPath = $this->normalizeCollectionPath($collection);
+        $url = "{$this->baseUrl}/{$collectionPath}/{$documentId}?{$updateMaskQuery}&key={$this->apiKey}";
 
         $res = Http::patch($url, ['fields' => $fields]);
 
         if ($res->failed()) {
+            \Illuminate\Support\Facades\Log::error('Firestore updateDocument failed', [
+                'collection_path' => $collectionPath,
+                'document_id' => $documentId,
+                'error' => $res->body(),
+                'status' => $res->status()
+            ]);
             throw new \Exception('Firestore updateDocument error: ' . $res->body());
         }
 
         // Log data mutation để audit
         \Illuminate\Support\Facades\Log::info('Firestore document updated', [
-            'collection' => $collection,
+            'collection_path' => $collectionPath,
             'document_id' => $documentId,
             'fields' => array_keys($data),
             'update_mask' => $updateMaskQuery,
@@ -227,22 +299,36 @@ class FirestoreSimple
     }
 
     /**
-     * 🗑️ Xóa document
+     * 🗑️ Xóa document (hỗ trợ subcollection)
      */
     public function deleteDocument(string $collection, string $documentId)
     {
-        $url = "{$this->baseUrl}/{$collection}/{$documentId}?key={$this->apiKey}";
+        // Xử lý subcollection path (ví dụ: activities/{uid})
+        $collectionPath = $this->normalizeCollectionPath($collection);
+        $url = "{$this->baseUrl}/{$collectionPath}/{$documentId}?key={$this->apiKey}";
+        
         $res = Http::delete($url);
 
         if ($res->failed()) {
+            \Illuminate\Support\Facades\Log::error('Firestore deleteDocument failed', [
+                'collection_path' => $collectionPath,
+                'document_id' => $documentId,
+                'error' => $res->body(),
+                'status' => $res->status()
+            ]);
             throw new \Exception('Firestore deleteDocument error: ' . $res->body());
         }
+
+        \Illuminate\Support\Facades\Log::info('Document deleted successfully', [
+            'collection_path' => $collectionPath,
+            'document_id' => $documentId
+        ]);
 
         return true;
     }
 
     /**
-     * 🔍 Query documents với điều kiện
+     * 🔍 Query documents với điều kiện (hỗ trợ subcollection)
      */
     public function queryDocuments(string $collection, array $query = [])
     {
@@ -369,6 +455,22 @@ class FirestoreSimple
             default:
                 return false;
         }
+    }
+
+    /**
+     * 🔧 Normalize collection path để hỗ trợ subcollection
+     * Ví dụ: activities/{uid} -> activities/{uid}
+     * Ví dụ: purchases/{uid}/sheets -> purchases/{uid}/sheets
+     */
+    private function normalizeCollectionPath(string $collection): string
+    {
+        // Nếu collection không chứa '/' thì trả về nguyên vẹn
+        if (strpos($collection, '/') === false) {
+            return $collection;
+        }
+        
+        // Nếu chứa '/' thì đây là subcollection path
+        return $collection;
     }
 
     /**

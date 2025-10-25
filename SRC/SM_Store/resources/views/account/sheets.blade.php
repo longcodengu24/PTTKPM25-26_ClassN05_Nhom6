@@ -3,8 +3,7 @@
 <div class="profile-card rounded-2xl p-6">
     <div class="flex justify-between items-center mb-6">
         <h3 class="orbitron text-xl font-bold text-white">
-<<<<<<< HEAD
-            Sheet Nhạc Đã Mua ({{ $totalPurchasedProducts ?? 0 }})
+            Sheet Nhạc Đã Mua ({{ $purchasedProducts->count() ?? 0 }})
             @if(config('app.debug'))
                 <small class="text-xs text-blue-200 block">
                     UID: {{ session('firebase_uid', 'NULL') }}
@@ -23,8 +22,9 @@
                 <tr class="bg-white/10 text-white/90 uppercase text-xs tracking-wider">
                     <th class="py-3 px-4 rounded-l-xl font-semibold">Tên Sheet</th>
                     <th class="py-3 px-4 font-semibold">Người Soạn</th>
-                    <th class="py-3 px-4 font-semibold">Danh Mục</th>
+                    <th class="py-3 px-4 font-semibold">Trạng Thái</th>
                     <th class="py-3 px-4 font-semibold">Giá</th>
+                    <th class="py-3 px-4 font-semibold">Đánh Giá</th>
                     <th class="py-3 px-4 rounded-r-xl font-semibold text-center">Thao Tác</th>
                 </tr>
             </thead>
@@ -33,155 +33,142 @@
                     @foreach($purchasedProducts as $product)
                     <tr class="bg-white/10 hover:bg-white/20 transition-all duration-300">
                         <td class="py-3 px-4 text-white">
-                            <div class="orbitron font-bold leading-tight">{{ $product['title'] ?? 'Chưa có tên' }}</div>
-                            <div class="inter text-xs text-blue-100 mt-1">{{ $product['description'] ?? '' }}</div>
+                            <div class="orbitron font-bold leading-tight">{{ $product['name'] ?? 'Chưa có tên' }}</div>
+                            <div class="inter text-xs text-blue-100 mt-1">ID: {{ $product['product_id'] ?? 'N/A' }}</div>
+                            @if(!empty($product['category']))
+                                <div class="inter text-xs text-purple-200 mt-1">Thể loại: {{ $product['category'] }}</div>
+                            @endif
                         </td>
                         <td class="py-3 px-4 text-white">
-                            {{ $product['seller_name'] ?? 'Không rõ người soạn' }}
+                            {{ $product['author'] ?? 'Không rõ người soạn' }}
                         </td>
                         <td class="py-3 px-4 text-white">
-                            {{ $product['category'] ?? 'Chưa phân loại' }}
+                            <span class="px-2 py-1 rounded text-xs font-semibold 
+                                @if(($product['status'] ?? '') === 'active') bg-green-500 text-white
+                                @elseif(($product['status'] ?? '') === 'completed') bg-green-500 text-white
+                                @elseif(($product['status'] ?? '') === 'pending') bg-yellow-500 text-white
+                                @else bg-gray-500 text-white @endif">
+                                {{ ucfirst($product['status'] ?? 'Chưa xác định') }}
+                            </span>
                         </td>
                         <td class="py-3 px-4 text-white orbitron font-semibold">
                             {{ number_format($product['price'] ?? 0) }}đ
                         </td>
+                        <td class="py-3 px-4 text-white text-center">
+                            @if(($product['rating'] ?? 0) > 0)
+                                <div class="flex items-center justify-center space-x-1">
+                                    <span class="text-yellow-300">⭐</span>
+                                    <span class="font-semibold">{{ $product['rating'] }}/5</span>
+                                </div>
+                            @else
+                                <span class="text-gray-400 text-sm">Chưa đánh giá</span>
+                            @endif
+                        </td>
                         <td class="py-3 px-4 text-center">
-                            <a href="{{ asset($product['file_url'] ?? '#') }}" 
-                               target="_blank"
-                               class="px-4 py-1 rounded bg-green-500 hover:bg-green-600 text-white font-semibold shadow inline-block text-center transition">
-=======
-            Sheet Nhạc Của Tôi ({{ (isset($totalUserProducts) ? $totalUserProducts : 0) + (isset($totalPurchasedProducts) ? $totalPurchasedProducts : 0) }})
-            @if(config('app.debug'))
-                <small class="text-xs text-blue-200 block">
-                    Debug: UID = {{ session('firebase_uid', 'NULL') }}, 
-                    Own Products = {{ isset($userProducts) ? $userProducts->count() : 'NULL' }},
-                    Purchased = {{ isset($purchasedProducts) ? $purchasedProducts->count() : 'NULL' }}
-                </small>
-            @endif
-        </h3>
-        <a href="{{ route('saler.products.create') }}" class="glow-button bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg inter font-semibold">
-            + Tạo Product Mới
-        </a>
-    </div>
-    <div class="overflow-x-auto">
-        <table class="min-w-full text-sm text-left">
-            <thead>
-                <tr class="text-white/80 border-b border-white/20">
-                    <th class="py-3 px-4 font-semibold">Tên</th>
-                    <th class="py-3 px-4 font-semibold">Người Soạn</th>
-                    <th class="py-3 px-4 font-semibold">Danh Mục</th>
-                    <th class="py-3 px-4 font-semibold">Giá</th>
-                    <th class="py-3 px-4 font-semibold">Lượt Mua</th>
-                    <th class="py-3 px-4 font-semibold">Trạng Thái</th>
-                    <th class="py-3 px-4 font-semibold">Thao Tác</th>
-                </tr>
-            </thead>
-            <tbody>
-                <!-- User's own products -->
-                @if(isset($userProducts) && $userProducts->count() > 0)
-                    @foreach($userProducts as $product)
-                    <tr class="bg-white/10 hover:bg-white/20 transition rounded-xl">
-                        <td class="py-4 px-4">
-                            <div>
-                                <div class="orbitron font-bold text-white leading-tight">{{ $product['name'] ?? 'Chưa có tên' }}</div>
-                                <div class="inter text-xs text-blue-100">{{ $product['author'] ?? 'Chưa xác định' }}</div>
+                            <div class="flex flex-col space-y-2">
+                                @if(!empty($product['file_path']))
+                                    <button onclick="downloadSheet('{{ $product['id'] }}', '{{ basename($product['file_path']) }}')" 
+                                            class="px-3 py-1 rounded bg-green-500 hover:bg-green-600 text-white font-semibold shadow text-sm transition-all duration-200 hover:shadow-lg hover:scale-105"
+                                            title="Tải về file: {{ basename($product['file_path']) }}"
+                                            id="download-btn-{{ $product['id'] }}">
+                                        <span class="download-text">📥 Tải về</span>
+                                        <span class="download-loading hidden">⏳ Đang tải...</span>
+                                    </button>
+                                    @if(config('app.debug'))
+                                        <div class="text-xs text-gray-400 mt-1">
+                                            ID: {{ $product['id'] }}<br>
+                                            Path: {{ $product['file_path'] }}<br>
+                                            Author: {{ $product['author'] }}<br>
+                                            Status: {{ $product['status'] }}<br>
+                                            <span class="text-green-300">✅ File có sẵn để download</span>
+                                        </div>
+                                    @endif
+                                @else
+                                    <span class="px-3 py-1 rounded bg-gray-500 text-white font-semibold shadow text-sm">
+                                        ❌ Không có file
+                                    </span>
+                                    @if(config('app.debug'))
+                                        <div class="text-xs text-red-300 mt-1">
+                                            File path trống hoặc không tồn tại
+                                        </div>
+                                    @endif
+                                @endif
+                                
+                                
+                                <div class="text-xs text-gray-300">
+                                    Mua: {{ \Carbon\Carbon::parse($product['purchased_at'])->format('d/m/Y H:i') ?? 'N/A' }}
+                                </div>
                             </div>
-                        </td>
-                        <td class="py-4 px-4 text-white">{{ $product['transcribed_by'] ?? 'Chưa xác định' }}</td>
-                        <td class="py-4 px-4 text-white">{{ $product['country_region'] ?? 'Chưa phân loại' }}</td>
-                        <td class="py-4 px-4 text-white orbitron font-semibold">{{ number_format($product['price'] ?? 0) }}đ</td>
-                        <td class="py-4 px-4 text-white">{{ $product['sold_count'] ?? 0 }}</td>
-                        <td class="py-4 px-4">
-                            <span class="bg-green-200 text-green-700 px-3 py-1 rounded-full text-xs font-semibold">Sản phẩm của tôi</span>
-                        </td>
-                        <td class="py-4 px-4 flex gap-2">
-                            <a href="{{ route('account.download', $product['id']) }}" 
-                               class="px-4 py-1 rounded bg-blue-500 hover:bg-blue-600 text-white font-semibold shadow inline-block text-center">
-                                Tải
-                            </a>
-                            <a href="{{ route('saler.products.edit', $product['id']) }}" 
-                               class="px-4 py-1 rounded bg-yellow-500 hover:bg-yellow-600 text-white font-semibold shadow inline-block text-center">
-                                Sửa
-                            </a>
-                        </td>
-                    </tr>
-                    @endforeach
-                @endif
-
-                <!-- Purchased products -->
-                @if(isset($purchasedProducts) && $purchasedProducts->count() > 0)
-                    @foreach($purchasedProducts as $product)
-                    <tr class="bg-white/5 hover:bg-white/20 transition rounded-xl">
-                        <td class="py-4 px-4">
-                            <div>
-                                <div class="orbitron font-bold text-white leading-tight">{{ $product['product_name'] ?? 'Chưa có tên' }}</div>
-                                <div class="inter text-xs text-blue-100">{{ $product['author'] ?? 'Chưa xác định' }}</div>
-                            </div>
-                        </td>
-                        <td class="py-4 px-4 text-white">Đã mua</td>
-                        <td class="py-4 px-4 text-white">Music</td>
-                        <td class="py-4 px-4 text-white orbitron font-semibold">{{ number_format($product['price'] ?? 0) }}đ</td>
-                        <td class="py-4 px-4 text-white">-</td>
-                        <td class="py-4 px-4">
-                            <span class="bg-blue-200 text-blue-700 px-3 py-1 rounded-full text-xs font-semibold">Đã mua</span>
-                        </td>
-                        <td class="py-4 px-4 flex gap-2">
-                            <a href="{{ route('account.download', $product['product_id']) }}" 
-                               class="px-4 py-1 rounded bg-green-500 hover:bg-green-600 text-white font-semibold shadow inline-block text-center">
->>>>>>> 4e0fcd0d9d0af40ad9cee5488658eb3cda4b9836
-                                Tải về
-                            </a>
                         </td>
                     </tr>
                     @endforeach
                 @else
-<<<<<<< HEAD
                     <tr>
-                        <td colspan="5" class="py-5 text-center text-white/60">
+                        <td colspan="6" class="py-5 text-center text-white/60">
                             Bạn chưa mua sheet nhạc nào.
                         </td>
                     </tr>
                 @endif
-=======
-                    <!-- Debug message when no products found -->
-                    <tr class="bg-white/5">
-                        <td colspan="7" class="py-4 px-4 text-center text-white/60">
-                            @if(isset($userProducts))
-                                <div class="text-sm">
-                                    Không tìm thấy sheet nhạc nào của bạn
-                                    @if(config('app.debug'))
-                                        <br><small>Debug: UID = {{ session('firebase_uid', 'NULL') }}</small>
-                                        <br><small>Total products in DB: {{ isset($userProducts) ? 'Loaded' : 'Not loaded' }}</small>
-                                    @endif
-                                </div>
-                            @else
-                                <div class="text-sm">Chưa load được dữ liệu sản phẩm</div>
-                            @endif
-                        </td>
-                    </tr>
-                @endif
-                
-                @if(config('app.debug'))
-                <!-- Temporary debug section to show all products structure -->
-                <tr class="bg-red-900/20">
-                    <td colspan="7" class="py-4 px-4">
-                        <details class="text-white text-xs">
-                            <summary class="cursor-pointer">🐛 Debug: Xem tất cả sản phẩm (click để mở)</summary>
-                            <div class="mt-2 max-h-40 overflow-y-auto bg-black/30 p-2 rounded">
-                                <pre>{{ print_r(isset($userProducts) ? $userProducts->take(3)->toArray() : 'No products', true) }}</pre>
-                            </div>
-                        </details>
-                    </td>
-                </tr>
-                @endif
-       
->>>>>>> 4e0fcd0d9d0af40ad9cee5488658eb3cda4b9836
             </tbody>
         </table>
     </div>
 </div>
 @endsection
-<<<<<<< HEAD
-=======
 
->>>>>>> 4e0fcd0d9d0af40ad9cee5488658eb3cda4b9836
+<script>
+function downloadSheet(sheetId, fileName) {
+    const button = document.getElementById('download-btn-' + sheetId);
+    const textSpan = button.querySelector('.download-text');
+    const loadingSpan = button.querySelector('.download-loading');
+    
+    // Show loading state
+    textSpan.classList.add('hidden');
+    loadingSpan.classList.remove('hidden');
+    button.disabled = true;
+    
+    // Check if user is logged in
+    const firebaseUid = '{{ session("firebase_uid") }}';
+    
+    if (!firebaseUid || firebaseUid === '') {
+        // User not logged in
+        alert('Vui lòng đăng nhập để tải file!');
+        resetButton();
+        return;
+    }
+    
+    // Create download link
+    const downloadUrl = '{{ route("account.download", ":id") }}'.replace(':id', sheetId);
+    
+    // Create hidden link and trigger download
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = fileName;
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    
+    // Handle download success/error
+    link.onclick = function(e) {
+        // Let the browser handle the download
+        setTimeout(() => {
+            resetButton();
+            document.body.removeChild(link);
+        }, 1000);
+    };
+    
+    // Handle download error
+    link.onerror = function() {
+        alert('Có lỗi khi tải file. Vui lòng thử lại!');
+        resetButton();
+        document.body.removeChild(link);
+    };
+    
+    // Trigger download
+    link.click();
+    
+    function resetButton() {
+        textSpan.classList.remove('hidden');
+        loadingSpan.classList.add('hidden');
+        button.disabled = false;
+    }
+}
+</script>

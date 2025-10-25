@@ -3,10 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<<<<<<< HEAD
+
     <meta name="csrf-token" content="{{ csrf_token() }}">
-=======
->>>>>>> 4e0fcd0d9d0af40ad9cee5488658eb3cda4b9836
+
     <title>Tài Khoản - Sky Music Store</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
@@ -65,6 +64,11 @@
             <a href="{{ route('saler.dashboard') }}" 
                class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg inter font-medium transition-colors">
                 🛒 Seller Panel
+            </a>
+            @else
+            <a href="{{ route('account.helpseller') }}" 
+               class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg inter font-medium transition-colors">
+                🎼 Trở thành Seller
             </a>
             @endif
             

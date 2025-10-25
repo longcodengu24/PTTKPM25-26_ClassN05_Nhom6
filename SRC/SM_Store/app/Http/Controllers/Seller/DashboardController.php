@@ -27,9 +27,8 @@ class DashboardController extends Controller
                 return redirect()->route('login')->with('error', 'Vui lòng đăng nhập');
             }
 
-            // Lấy tất cả purchases của seller
+            // Lấy tất cả purchases của seller từ collection purchases
             $purchasesResponse = $this->firestoreService->listDocuments('purchases');
-
             $totalRevenue = 0;
             $totalOrders = 0;
             $completedOrders = 0;

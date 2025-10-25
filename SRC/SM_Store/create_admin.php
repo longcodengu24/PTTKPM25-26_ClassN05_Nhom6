@@ -13,7 +13,7 @@ use App\Services\FirestoreSimple;
 try {
     // Khởi tạo Firebase Auth
     $auth = (new Factory)
-        ->withServiceAccount(__DIR__ . '/resources/key/firebasekey.json')
+        ->withServiceAccount(__DIR__ . '/resources/key/firebase.json')
         ->createAuth();
 
     // Khởi tạo Firestore Simple Service

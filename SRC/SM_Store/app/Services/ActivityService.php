@@ -15,7 +15,7 @@ class ActivityService
     }
 
     /**
-     * Tạo activity notification
+     * Tạo activity notification theo cấu trúc activities-{uid}
      */
     public function createActivity(string $userUid, string $type, string $message, array $data = [])
     {
@@ -25,17 +25,14 @@ class ActivityService
             // Determine title based on type for consistency with existing activities
             $title = '';
             switch ($type) {
-                case 'upload':
-                    $title = 'Tải lên sheet nhạc mới';
-                    break;
-                case 'update':
-                    $title = 'Cập nhật sheet nhạc';
-                    break;
-                case 'delete':
-                    $title = 'Xóa sheet nhạc';
-                    break;
                 case 'purchase':
                     $title = 'Mua sheet thành công';
+                    break;
+                case 'deposit':
+                    $title = 'Nạp Sky Coins';
+                    break;
+                case 'download':
+                    $title = 'Bạn đã tải sheet nhạc về máy';
                     break;
                 case 'sale':
                     $title = 'Bán sheet thành công';
@@ -44,9 +41,8 @@ class ActivityService
                     $title = ucfirst($type);
             }
 
-            // Use existing structure format to match current activities
+            // Tạo activity data với cấu trúc mới
             $activityData = array_merge([
-                'user_id' => $userUid,  // Use user_id to match existing structure
                 'type' => $type,
                 'title' => $title,
                 'description' => $message,
@@ -54,17 +50,34 @@ class ActivityService
                 'read' => false
             ], $data);
 
-            Log::info('Creating activity with existing structure', [
+            // Đảm bảo các field số được convert đúng
+            if (isset($activityData['amount'])) {
+                $activityData['amount'] = floatval($activityData['amount']);
+            }
+            if (isset($activityData['total_amount'])) {
+                $activityData['total_amount'] = floatval($activityData['total_amount']);
+            }
+            if (isset($activityData['balance'])) {
+                $activityData['balance'] = floatval($activityData['balance']);
+            }
+
+            // Tạo collection name theo format: activities-{uid}
+            $collectionName = "activities-{$userUid}";
+            
+            Log::info('Creating activity with collection structure', [
+                'collection_name' => $collectionName,
                 'activity_data' => $activityData
             ]);
 
-            $activityId = $this->firestore->createDocument('activities', $activityData);
+            // Lưu activity vào collection riêng của user
+            $activityId = $this->firestore->createDocument($collectionName, $activityData);
 
             if ($activityId) {
                 Log::info('Activity created successfully', [
                     'activity_id' => $activityId,
                     'user_uid' => $userUid,
-                    'type' => $type
+                    'type' => $type,
+                    'collection' => $collectionName
                 ]);
                 return $activityId;
             } else {
@@ -118,23 +131,48 @@ class ActivityService
     }
 
     /**
-     * Lấy activities của user
+     * Lấy activities của user từ collection activities-{uid}
      */
     public function getUserActivities(string $userUid, int $limit = 20)
     {
         try {
-            // Use where condition format that FirestoreSimple expects
-            // Note: existing activities use 'user_id' field
-            $query = [
-                'where' => [
-                    ['user_id', '==', $userUid]
-                ],
-                'limit' => $limit * 2 // Get more to ensure we have enough after filtering
-            ];
-
-            $results = $this->firestore->queryDocuments('activities', $query);
+            // Tạo collection name theo format: activities-{uid}
+            $collectionName = "activities-{$userUid}";
+            
+            // Lấy tất cả documents từ collection của user
+            $response = $this->firestore->listDocuments($collectionName, 1000);
+            $results = [];
+            
+            if (isset($response['documents'])) {
+                foreach ($response['documents'] as $doc) {
+                    $fields = $doc['fields'] ?? [];
+                    $data = [];
+                    
+                    // Parse fields manually
+                    foreach ($fields as $key => $field) {
+                        if (isset($field['stringValue'])) {
+                            $data[$key] = $field['stringValue'];
+                        } elseif (isset($field['doubleValue'])) {
+                            $data[$key] = $field['doubleValue'];
+                        } elseif (isset($field['integerValue'])) {
+                            $data[$key] = $field['integerValue'];
+                        } elseif (isset($field['booleanValue'])) {
+                            $data[$key] = $field['booleanValue'];
+                        } elseif (isset($field['timestampValue'])) {
+                            $data[$key] = $field['timestampValue'];
+                        }
+                    }
+                    
+                    $id = basename($doc['name'] ?? '');
+                    $results[] = ['id' => $id, 'data' => $data];
+                }
+            }
 
             if (empty($results)) {
+                Log::info('No activities found for user', [
+                    'user_uid' => $userUid,
+                    'collection' => $collectionName
+                ]);
                 return [];
             }
 
@@ -142,7 +180,11 @@ class ActivityService
             foreach ($results as $result) {
                 $activity = $result['data'] ?? [];
                 $activity['id'] = $result['id'] ?? '';
-                $userActivities[] = $activity;
+                
+                // Chỉ thêm activity có đầy đủ thông tin cơ bản
+                if (!empty($activity['type']) && !empty($activity['title']) && !empty($activity['created_at'])) {
+                    $userActivities[] = $activity;
+                }
             }
 
             // Sort by created_at timestamp (ISO format) descending for precise chronological order
@@ -155,9 +197,22 @@ class ActivityService
             });
 
             // Limit results
-            return array_slice($userActivities, 0, $limit);
+            $limitedActivities = array_slice($userActivities, 0, $limit);
+            
+            Log::info('Retrieved user activities', [
+                'user_uid' => $userUid,
+                'collection' => $collectionName,
+                'total_found' => count($userActivities),
+                'returned' => count($limitedActivities),
+                'sample_activity' => $limitedActivities[0] ?? null
+            ]);
+            
+            return $limitedActivities;
         } catch (\Exception $e) {
-            Log::error('Error getting user activities: ' . $e->getMessage());
+            Log::error('Error getting user activities: ' . $e->getMessage(), [
+                'user_uid' => $userUid,
+                'exception' => $e->getTraceAsString()
+            ]);
             return [];
         }
     }
@@ -165,10 +220,11 @@ class ActivityService
     /**
      * Đánh dấu activity đã đọc
      */
-    public function markAsRead(string $activityId)
+    public function markAsRead(string $userUid, string $activityId)
     {
         try {
-            return $this->firestore->updateDocument('activities', $activityId, ['read' => true]);
+            $collectionName = "activities-{$userUid}";
+            return $this->firestore->updateDocument($collectionName, $activityId, ['read' => true]);
         } catch (\Exception $e) {
             Log::error('Error marking activity as read: ' . $e->getMessage());
             return false;

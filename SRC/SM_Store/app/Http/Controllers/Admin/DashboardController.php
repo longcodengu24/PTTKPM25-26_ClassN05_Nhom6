@@ -4,22 +4,26 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Services\FirestoreSimple;
+use App\Services\AdminRevenueService;
 use Illuminate\Support\Facades\Log;
 
 class DashboardController extends Controller
 {
     protected $firestore;
+    protected $revenueService;
 
     public function __construct()
     {
         $this->firestore = new FirestoreSimple();
+        $this->revenueService = new AdminRevenueService();
     }
 
     public function index()
     {
         try {
-            // Lấy tất cả purchases
+            // Lấy tất cả purchases từ collection purchases
             $purchasesResponse = $this->firestore->listDocuments('purchases', 1000);
+            $allPurchases = $purchasesResponse['documents'] ?? [];
 
             // Lấy tất cả users
             $usersResponse = $this->firestore->listDocuments('users', 1000);
@@ -44,8 +48,7 @@ class DashboardController extends Controller
             $recentOrders = [];
 
             // Xử lý purchases
-            if (isset($purchasesResponse['documents'])) {
-                foreach ($purchasesResponse['documents'] as $doc) {
+            foreach ($allPurchases as $doc) {
                     $fields = $doc['fields'] ?? [];
                     $data = $this->parseDocument($fields);
 
@@ -102,7 +105,6 @@ class DashboardController extends Controller
                             'date' => date('d/m/Y H:i', strtotime($purchasedAt))
                         ];
                     }
-                }
             }
 
             // Xử lý users
@@ -134,10 +136,16 @@ class DashboardController extends Controller
             // Chuẩn bị dữ liệu biểu đồ (7 ngày gần nhất - số đơn hàng)
             $chartData = $this->prepareChartData($dailyOrders);
 
-            // TODO: Tính toán doanh thu admin từ hoa hồng
-            // Logic: Lấy % hoa hồng từ mỗi giao dịch (ví dụ: 5% hoặc 10%)
-            // Cần lấy thông tin giá từ purchases và tính % hoa hồng
-            $adminRevenue = 0; // Tạm thời là 0, chờ implement logic hoa hồng
+            // Tính toán doanh thu admin từ hoa hồng (30% từ mỗi giao dịch)
+            $revenueData = $this->revenueService->calculateAdminRevenue();
+            $adminRevenue = $revenueData['total_revenue'];
+            $totalSales = $revenueData['total_sales'];
+            $todayRevenue = $revenueData['today_revenue'];
+            $weekRevenue = $revenueData['week_revenue'];
+            $monthRevenue = $revenueData['month_revenue'];
+            $topSellers = $revenueData['revenue_by_seller'];
+            $recentTransactions = $revenueData['recent_transactions'];
+            $revenueChartData = $revenueData['chart_data'];
 
             $stats = [
                 'total_orders' => $totalOrders,
@@ -154,8 +162,16 @@ class DashboardController extends Controller
                 'recent_orders' => $recentOrders,
                 'chart_data' => $chartData,
                 'conversion_rate' => $totalOrders > 0 ? round(($completedOrders / $totalOrders) * 100, 2) : 0,
-                // Admin Revenue (Commission based)
-                'admin_revenue' => $adminRevenue
+                // Admin Revenue (Commission based - 30%)
+                'admin_revenue' => $adminRevenue,
+                'total_sales' => $totalSales,
+                'today_revenue' => $todayRevenue,
+                'week_revenue' => $weekRevenue,
+                'month_revenue' => $monthRevenue,
+                'top_sellers' => $topSellers,
+                'recent_transactions' => $recentTransactions,
+                'revenue_chart_data' => $revenueChartData,
+                'commission_rate' => 30
             ];
 
             Log::info('Admin dashboard loaded', ['stats' => $stats]);
@@ -236,8 +252,20 @@ class DashboardController extends Controller
                 'max' => 0
             ],
             'conversion_rate' => 0,
-            // Admin Revenue (Commission)
-            'admin_revenue' => 0
+            // Admin Revenue (Commission - 30%)
+            'admin_revenue' => 0,
+            'total_sales' => 0,
+            'today_revenue' => 0,
+            'week_revenue' => 0,
+            'month_revenue' => 0,
+            'top_sellers' => [],
+            'recent_transactions' => [],
+            'revenue_chart_data' => [
+                'labels' => [],
+                'values' => [],
+                'max' => 0
+            ],
+            'commission_rate' => 30
         ];
     }
 }

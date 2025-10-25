@@ -2,6 +2,9 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Account\PaymentController;
+use App\Http\Controllers\CartController;
+use App\Http\Controllers\ProductController;
 
 /*
 |--------------------------------------------------------------------------
@@ -18,17 +21,16 @@ Route::middleware('api')->get('/ping', function (Request $request) {
     return response()->json(['message' => 'pong']);
 });
 
-<<<<<<< HEAD
-// Payment API - Create deposit (no CSRF required)
-Route::post('/payment/create', [\App\Http\Controllers\Account\PaymentController::class, 'createDeposit'])
+// ✅ Payment API - Create deposit (no CSRF required)
+Route::post('/payment/create', [PaymentController::class, 'createDeposit'])
     ->middleware('web'); // Cần web middleware để có session
 
-// Payment API - Check transaction status
-Route::get('/payment/status', [\App\Http\Controllers\Account\PaymentController::class, 'checkPaymentStatus'])
-    ->middleware('web'); // Cần web middleware để có session
+// ✅ Payment API - Check transaction status
+Route::get('/payment/status', [PaymentController::class, 'checkPaymentStatus'])
+    ->middleware('web');
 
-// Test payment endpoint without CSRF
-Route::post('/test-payment', function(Request $request) {
+// ✅ Test payment endpoint without CSRF
+Route::post('/test-payment', function (Request $request) {
     \Log::info('🚀 API Test payment endpoint called', ['data' => $request->all()]);
     
     try {
@@ -41,7 +43,7 @@ Route::post('/test-payment', function(Request $request) {
             'bank_name' => 'TPBank',
             'account_number' => '20588668888',
             'account_name' => 'Sky Music Store',
-            'content' => $userId  // Nội dung là UID
+            'content' => $userId
         ];
         
         // Tạo QR Code với VietQR API
@@ -72,24 +74,18 @@ Route::post('/test-payment', function(Request $request) {
     }
 });
 
-// SePay Webhook - Override package route
-Route::post('/sepay/webhook', [\App\Http\Controllers\Account\PaymentController::class, 'handleWebhook'])
+// ✅ SePay Webhook - Override package route
+Route::post('/sepay/webhook', [PaymentController::class, 'handleWebhook'])
     ->name('sepay.webhook.custom')
     ->withoutMiddleware(['throttle:api']);
 
-=======
->>>>>>> 4e0fcd0d9d0af40ad9cee5488658eb3cda4b9836
-// Cart API routes
+// ✅ Cart API routes
 Route::prefix('cart')->group(function () {
-    Route::post('/can-add', [App\Http\Controllers\CartController::class, 'canAddToCart']);
-    Route::get('/purchased-products', [App\Http\Controllers\CartController::class, 'getPurchasedProducts']);
-    Route::post('/validate', [App\Http\Controllers\CartController::class, 'validateCart']);
+    Route::post('/can-add', [CartController::class, 'canAddToCart']);
+    Route::get('/purchased-products', [CartController::class, 'getPurchasedProducts']);
+    Route::post('/validate', [CartController::class, 'validateCart']);
 });
-<<<<<<< HEAD
 
-// Product API routes
-Route::get('/products/{id}', [\App\Http\Controllers\ProductController::class, 'getProductById'])
+// ✅ Product API routes
+Route::get('/products/{id}', [ProductController::class, 'getProductById'])
     ->middleware('web');
-
-=======
->>>>>>> 4e0fcd0d9d0af40ad9cee5488658eb3cda4b9836

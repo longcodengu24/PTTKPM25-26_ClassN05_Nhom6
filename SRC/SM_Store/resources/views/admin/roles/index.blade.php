@@ -26,7 +26,92 @@
         </div>
     @endif
 
+    <!-- Seller Requests Section -->
+    @if(count($sellerRequests) > 0)
+    <div class="mb-8">
+        <h3 class="orbitron text-xl font-bold text-white mb-4">📝 Yêu cầu trở thành Seller</h3>
+        <div class="bg-white rounded-xl overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="min-w-full">
+                    <thead class="bg-yellow-50">
+                        <tr>
+                            <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Email</th>
+                            <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Lý do</th>
+                            <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Kinh nghiệm</th>
+                            <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Portfolio</th>
+                            <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Ngày gửi</th>
+                            <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Hành động</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($sellerRequests as $request)
+                        <tr class="border-b last:border-none hover:bg-gray-50">
+                            <td class="px-4 py-3 text-sm font-medium">{{ $request['email'] ?? 'N/A' }}</td>
+                            <td class="px-4 py-3 text-sm max-w-xs">
+                                <div class="truncate" title="{{ $request['reason'] ?? 'N/A' }}">
+                                    {{ Str::limit($request['reason'] ?? 'N/A', 50) }}
+                                </div>
+                            </td>
+                            <td class="px-4 py-3 text-sm">
+                                <span class="px-2 py-1 rounded-full text-xs
+                                    @if($request['experience'] == 'beginner') bg-green-100 text-green-800
+                                    @elseif($request['experience'] == 'intermediate') bg-yellow-100 text-yellow-800
+                                    @elseif($request['experience'] == 'advanced') bg-orange-100 text-orange-800
+                                    @elseif($request['experience'] == 'professional') bg-purple-100 text-purple-800
+                                    @else bg-gray-100 text-gray-800 @endif">
+                                    @switch($request['experience'])
+                                        @case('beginner') Mới bắt đầu @break
+                                        @case('intermediate') Trung bình @break
+                                        @case('advanced') Nâng cao @break
+                                        @case('professional') Chuyên nghiệp @break
+                                        @default {{ $request['experience'] ?? 'N/A' }}
+                                    @endswitch
+                                </span>
+                            </td>
+                            <td class="px-4 py-3 text-sm">
+                                @if($request['portfolio'])
+                                    <a href="{{ $request['portfolio'] }}" target="_blank" class="text-blue-600 hover:text-blue-800 underline">
+                                        Xem Portfolio
+                                    </a>
+                                @else
+                                    <span class="text-gray-400">Không có</span>
+                                @endif
+                            </td>
+                            <td class="px-4 py-3 text-sm text-gray-600">
+                                {{ isset($request['created_at']) ? \Carbon\Carbon::parse($request['created_at'])->format('d/m/Y H:i') : 'N/A' }}
+                            </td>
+                            <td class="px-4 py-3 text-sm">
+                                <div class="flex items-center gap-2">
+                                    <form method="POST" action="{{ route('admin.seller-requests.approve', $request['id']) }}" class="inline">
+                                        @csrf
+                                        <button type="submit" 
+                                                class="px-3 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 text-xs"
+                                                onclick="return confirm('Bạn có chắc chắn muốn chấp nhận yêu cầu này?')">
+                                            ✅ Chấp nhận
+                                        </button>
+                                    </form>
+                                    <form method="POST" action="{{ route('admin.seller-requests.reject', $request['id']) }}" class="inline">
+                                        @csrf
+                                        <button type="submit" 
+                                                class="px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 text-xs"
+                                                onclick="return confirm('Bạn có chắc chắn muốn từ chối yêu cầu này?')">
+                                            ❌ Từ chối
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    @endif
+
+    <!-- Users Management Section -->
     <div class="mb-4">
+        <h3 class="orbitron text-xl font-bold text-white mb-4">👥 Quản lý người dùng</h3>
         <input id="searchEmail" type="text" placeholder="Tìm email..."
                class="w-full p-3 rounded-lg bg-white bg-opacity-20 text-white placeholder-blue-200 border border-white border-opacity-30">
     </div>

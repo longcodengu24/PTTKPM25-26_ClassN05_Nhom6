@@ -8,45 +8,39 @@ use Kreait\Firebase\Contract\Auth;
 use Illuminate\Support\Facades\Log;
 use App\Models\Product;
 use App\Services\FirestoreSimple;
+use App\Services\UserPurchaseService;
 use App\Services\ActivityService;
 
 class AccountController extends Controller
 {
     protected $auth;
     protected $firestoreService;
+    protected $userPurchaseService;
 
     public function __construct(Auth $auth)
     {
         $this->auth = $auth;
         $this->firestoreService = new FirestoreSimple();
+        $this->userPurchaseService = new UserPurchaseService();
     }
 
-    /**
-     * Get user data (prefer from session, updated by middleware)
-     */
     private function getUserData()
     {
         try {
             $uid = session('firebase_uid');
-            if (!$uid) {
-                return null;
-            }
+            if (!$uid) return null;
 
-            // Lấy coins từ Firestore (dữ liệu quan trọng không cache trong session)
-            $firestore = new \App\Services\FirestoreSimple();
+            $firestore = new FirestoreSimple();
             $userDoc = $firestore->getDocument('users', $uid);
             $coins = $userDoc['coins'] ?? 0;
 
-            // Sử dụng dữ liệu từ session (đã được cập nhật bởi getUserData middleware)
-            $userData = [
+            return [
                 'name' => session('name', ''),
                 'email' => session('email', ''),
                 'avatar' => session('avatar', '/img/default-avatar.png'),
-                'coins' => $coins, // Chỉ coins cần query real-time
+                'coins' => $coins,
                 'uid' => $uid
             ];
-
-            return $userData;
         } catch (\Exception $e) {
             Log::error('Error getting user data: ' . $e->getMessage());
             return null;
@@ -56,17 +50,7 @@ class AccountController extends Controller
     public function settings()
     {
         $userData = $this->getUserData();
-
-        if (!$userData) {
-            return redirect()->route('auth.login')->withErrors(['error' => 'Vui lòng đăng nhập.']);
-        }
-
-        Log::info('User data loaded for settings', [
-            'uid' => session('firebase_uid'),
-            'name' => $userData['name'],
-            'avatar' => $userData['avatar']
-        ]);
-
+        if (!$userData) return redirect()->route('auth.login')->withErrors(['error' => 'Vui lòng đăng nhập.']);
         return view('account.settings', compact('userData'));
     }
 
@@ -76,105 +60,37 @@ class AccountController extends Controller
             'name' => 'required|string|max:100',
             'avatar' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'password' => 'nullable|min:6|confirmed',
-        ], [
-            'name.required' => 'Vui lòng nhập tên đăng nhập.',
-            'name.max' => 'Tên đăng nhập không được quá 100 ký tự.',
-            'avatar.image' => 'File phải là hình ảnh.',
-            'avatar.mimes' => 'Hình ảnh phải có định dạng: jpeg, png, jpg, gif.',
-            'avatar.max' => 'Kích thước file không được vượt quá 2MB.',
-            'password.min' => 'Mật khẩu phải có ít nhất 6 ký tự.',
-            'password.confirmed' => 'Mật khẩu xác nhận không khớp.',
         ]);
 
         try {
             $uid = session('firebase_uid');
-            if (!$uid) {
-                return back()->withErrors(['error' => 'Phiên đăng nhập không hợp lệ.']);
-            }
+            if (!$uid) return back()->withErrors(['error' => 'Phiên đăng nhập không hợp lệ.']);
 
-            // Cập nhật display name
-            $this->auth->updateUser($uid, [
-                'displayName' => $request->name,
-            ]);
-
-            // Cập nhật session
+            $this->auth->updateUser($uid, ['displayName' => $request->name]);
             session(['name' => $request->name]);
 
-            // Xử lý upload avatar
+            // Upload avatar
             if ($request->hasFile('avatar') && $request->file('avatar')->isValid()) {
-                try {
-                    $avatar = $request->file('avatar');
+                $avatar = $request->file('avatar');
+                $uploadDir = public_path('img/avatars');
+                if (!file_exists($uploadDir)) mkdir($uploadDir, 0755, true);
 
-                    Log::info('Avatar upload attempt', [
-                        'original_name' => $avatar->getClientOriginalName(),
-                        'size' => $avatar->getSize(),
-                        'mime_type' => $avatar->getMimeType(),
-                        'uid' => $uid
-                    ]);
-
-                    // Tạo thư mục nếu chưa có
-                    $uploadDir = public_path('img/avatars');
-                    if (!file_exists($uploadDir)) {
-                        if (!mkdir($uploadDir, 0755, true)) {
-                            throw new \Exception('Không thể tạo thư mục upload: ' . $uploadDir);
-                        }
-                        Log::info('Created upload directory', ['path' => $uploadDir]);
-                    }
-
-                    // Xóa avatar cũ nếu có
-                    $oldAvatar = session('avatar');
-                    if ($oldAvatar && strpos($oldAvatar, 'avatars/') !== false) {
-                        $oldFileName = basename($oldAvatar);
-                        $oldFile = $uploadDir . DIRECTORY_SEPARATOR . $oldFileName;
-                        if (file_exists($oldFile)) {
-                            unlink($oldFile);
-                            Log::info('Deleted old avatar', ['path' => $oldFile]);
-                        }
-                    }
-
-                    // Tạo tên file unique
-                    $fileName = 'avatar_' . $uid . '_' . time() . '.' . $avatar->getClientOriginalExtension();
-                    $fullPath = $uploadDir . DIRECTORY_SEPARATOR . $fileName;
-
-                    // Move file to public/img/avatars
-                    if (!$avatar->move($uploadDir, $fileName)) {
-                        throw new \Exception('Không thể di chuyển file đến: ' . $fullPath);
-                    }
-
-                    // Kiểm tra file đã được tạo
-                    if (!file_exists($fullPath)) {
-                        throw new \Exception('File không được tạo thành công: ' . $fullPath);
-                    }
-
-                    // Tạo URL cho avatar
-                    $photoUrl = asset('img/avatars/' . $fileName);
-
-                    // Cập nhật photo URL trong Firebase
-                    $this->auth->updateUser($uid, [
-                        'photoUrl' => $photoUrl,
-                    ]);
-
-                    // Cập nhật session
-                    session(['avatar' => $photoUrl]);
-
-                    Log::info('Avatar updated successfully', [
-                        'uid' => $uid,
-                        'photoUrl' => $photoUrl,
-                        'file_path' => $fullPath,
-                        'file_size' => filesize($fullPath)
-                    ]);
-                } catch (\Exception $e) {
-                    Log::error('Avatar upload error: ' . $e->getMessage(), [
-                        'uid' => $uid,
-                        'request_data' => $request->all()
-                    ]);
-                    return back()->withErrors(['avatar' => 'Lỗi upload ảnh: ' . $e->getMessage()]);
+                $oldAvatar = session('avatar');
+                if ($oldAvatar && strpos($oldAvatar, 'avatars/') !== false) {
+                    $oldFile = $uploadDir . '/' . basename($oldAvatar);
+                    if (file_exists($oldFile)) unlink($oldFile);
                 }
-            }            // Cập nhật mật khẩu nếu được cung cấp
+
+                $fileName = 'avatar_' . $uid . '_' . time() . '.' . $avatar->getClientOriginalExtension();
+                $avatar->move($uploadDir, $fileName);
+                $photoUrl = asset('img/avatars/' . $fileName);
+
+                $this->auth->updateUser($uid, ['photoUrl' => $photoUrl]);
+                session(['avatar' => $photoUrl]);
+            }
+
             if ($request->filled('password')) {
-                $this->auth->updateUser($uid, [
-                    'password' => $request->password,
-                ]);
+                $this->auth->updateUser($uid, ['password' => $request->password]);
             }
 
             return back()->with('success', 'Cập nhật thông tin thành công!');
@@ -193,105 +109,64 @@ class AccountController extends Controller
     public function sheets()
     {
         $userData = $this->getUserData();
-
         try {
-            // Get current user's UID
             $uid = session('firebase_uid');
-            $userProducts = collect([]);
+            $userProducts = collect();
+            $purchasedProducts = collect();
             $totalUserProducts = 0;
 
-            // Debug information
-            Log::info('Debug sheets - UID: ' . ($uid ?? 'NULL'));
-
             if ($uid) {
-                // Initialize Product model
+                // Lấy products của user (sản phẩm họ đã tạo)
                 $productModel = new Product();
+                $allProducts = $productModel->getAllActive() ?? [];
+                $userProducts = collect($allProducts)->filter(fn($p) =>
+                    ($p['seller_id'] ?? '') === $uid ||
+                    ($p['created_by'] ?? '') === $uid
+                );
 
-                // Get products from products collection only (user's own products)
-                $allProducts = $productModel->getAllActive();
-
-                // Convert Collection to array if needed
-                if (!is_array($allProducts)) {
-                    $allProducts = $allProducts->toArray();
+                // Lấy sheets đã mua từ subcollection mới
+                $sheets = $this->userPurchaseService->getUserSheets($uid);
+                
+                // Chuyển đổi format để tương thích với view
+                foreach ($sheets as $sheet) {
+                    $sheetData = $sheet['data'];
+                    $purchasedProducts->push([
+                        'id' => $sheet['id'],
+                        'product_id' => $sheetData['product_id'] ?? '',
+                        'name' => $sheetData['title'] ?? '',
+                        'author' => $sheetData['seller_name'] ?? '',
+                        'price' => $sheetData['price'] ?? 0,
+                        'status' => $sheetData['status'] ?? 'active',
+                        'file_path' => $sheetData['file_url'] ?? '', // file_url từ Firestore
+                        'image_path' => $sheetData['image_path'] ?? '',
+                        'purchased_at' => $sheetData['purchased_at'] ?? '',
+                        'transaction_id' => $sheetData['transaction_id'] ?? '',
+                        'category' => $sheetData['category'] ?? '',
+                        'description' => $sheetData['description'] ?? '',
+                        'rating' => $sheetData['rating'] ?? 0
+                    ]);
                 }
-
-                Log::info('Debug products - Total products: ' . count($allProducts));
-                Log::info('Debug products - Current user UID: ' . $uid);
-
-                // Filter products by seller_id (own products)
-                $userProducts = collect($allProducts)->filter(function ($product) use ($uid) {
-                    $hasCreatedBy = isset($product['created_by']) && $product['created_by'] === $uid;
-                    $hasUserId = isset($product['user_id']) && $product['user_id'] === $uid;
-                    $hasSellerUid = isset($product['seller_uid']) && $product['seller_uid'] === $uid;
-                    $hasSellerId = isset($product['seller_id']) && $product['seller_id'] === $uid;
-
-                    return $hasCreatedBy || $hasUserId || $hasSellerUid || $hasSellerId;
-                });
-
-                // Get purchased products from purchases collection
-                $firestoreService = new \App\Services\FirestoreSimple();
-                $purchasesResponse = $firestoreService->listDocuments('purchases');
-                $purchasedProducts = collect();
-
-                if (isset($purchasesResponse['documents'])) {
-                    foreach ($purchasesResponse['documents'] as $doc) {
-                        $docData = [];
-                        $docPath = $doc['name'] ?? '';
-                        $docData['id'] = basename($docPath);
-
-                        // Extract fields
-                        if (isset($doc['fields'])) {
-                            foreach ($doc['fields'] as $field => $value) {
-                                if (isset($value['stringValue'])) {
-                                    $docData[$field] = $value['stringValue'];
-                                } elseif (isset($value['integerValue'])) {
-                                    $docData[$field] = (int) $value['integerValue'];
-                                } elseif (isset($value['booleanValue'])) {
-                                    $docData[$field] = $value['booleanValue'];
-                                } elseif (isset($value['timestampValue'])) {
-                                    $docData[$field] = $value['timestampValue'];
-                                }
-                            }
-                        }
-
-                        // Filter by buyer_id
-                        if (($docData['buyer_id'] ?? '') === $uid) {
-                            $purchasedProducts->push($docData);
-                        }
-                    }
-                }
-
+                
                 $totalUserProducts = $userProducts->count();
-                $totalPurchasedProducts = $purchasedProducts->count();
-
-                Log::info('Debug products - Found user products: ' . $totalUserProducts);
-                Log::info('Debug products - Found purchased products: ' . $totalPurchasedProducts);
             }
 
-            return view('account.sheets', compact('userData', 'userProducts', 'totalUserProducts', 'purchasedProducts', 'totalPurchasedProducts'));
+            return view('account.sheets', compact('userData', 'userProducts', 'purchasedProducts', 'totalUserProducts'));
         } catch (\Exception $e) {
             Log::error('Error fetching user sheets: ' . $e->getMessage());
-            return view('account.sheets', compact('userData'))->with('error', 'Có lỗi xảy ra khi tải danh sách sheet nhạc.');
+            return view('account.sheets', compact('userData'))->with('error', 'Có lỗi xảy ra.');
         }
     }
 
     public function activity()
     {
         $userData = $this->getUserData();
-
         $activities = [];
 
         try {
             $uid = session('firebase_uid');
             if ($uid) {
-                // Sử dụng ActivityService để lấy tất cả activities đã được sort chính xác chronologically
                 $activityService = new ActivityService();
                 $activities = $activityService->getUserActivities($uid, 30);
-
-                Log::info('Activities loaded via ActivityService', [
-                    'user_id' => $uid,
-                    'count' => count($activities)
-                ]);
             }
         } catch (\Exception $e) {
             Log::error('Error loading user activities: ' . $e->getMessage());
@@ -312,7 +187,6 @@ class AccountController extends Controller
         return view('account.withdraw', compact('userData'));
     }
 
-<<<<<<< HEAD
     public function processWithdraw(Request $request)
     {
         try {
@@ -323,444 +197,217 @@ class AccountController extends Controller
             ]);
 
             $userId = session('firebase_uid');
-            
-            if (!$userId) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Vui lòng đăng nhập'
-                ], 401);
-            }
+            if (!$userId) return response()->json(['success' => false, 'message' => 'Vui lòng đăng nhập'], 401);
 
-            $amount = $validated['amount'];
-            $method = $validated['method'];
-            $accountInfo = $validated['account_info'];
-
-            // Kiểm tra amount phải là bội số của 5000
-            if ($amount % 5000 !== 0) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Số tiền rút phải là bội số của 5,000'
-                ]);
-            }
-
-            // Lấy thông tin user từ Firestore
             $firestore = new \App\Services\FirestoreRestService();
             $userDoc = $firestore->getDocument('users', $userId);
-            
-            if (!$userDoc['success']) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Không tìm thấy thông tin người dùng'
-                ], 404);
-            }
+            if (!$userDoc['success']) return response()->json(['success' => false, 'message' => 'Không tìm thấy người dùng'], 404);
 
             $userData = $userDoc['data'];
             $currentCoins = $userData['coins'] ?? 0;
+            $amount = $validated['amount'];
 
-            // Kiểm tra đủ coins không
-            if ($currentCoins < $amount) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Số dư không đủ. Bạn có ' . number_format($currentCoins) . ' coins'
-                ]);
-            }
+            if ($amount % 5000 !== 0) return response()->json(['success' => false, 'message' => 'Số tiền rút phải là bội số của 5,000']);
+            if ($currentCoins < $amount) return response()->json(['success' => false, 'message' => 'Số dư không đủ'], 400);
 
-            // Trừ coins
-            $newCoins = $currentCoins - $amount;
-            $userData['coins'] = $newCoins;
+            $userData['coins'] = $currentCoins - $amount;
+            $firestore->updateDocument('users', $userId, $userData);
 
-            // Cập nhật Firestore
-            $updateResult = $firestore->updateDocument('users', $userId, $userData);
-
-            if (!$updateResult['success']) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Không thể cập nhật số dư'
-                ], 500);
-            }
-
-            // Log activity
             $activityService = new ActivityService();
-            $message = "Rút tiền thành công: " . number_format($amount) . " coins qua " . strtoupper($method);
-            $activityService->createActivity($userId, 'withdraw', $message, [
+            $activityService->createActivity($userId, 'withdraw', 'Rút tiền thành công', [
                 'amount' => $amount,
-                'method' => $method,
-                'account_info' => $accountInfo,
-                'old_balance' => $currentCoins,
-                'new_balance' => $newCoins
+                'method' => $validated['method']
             ]);
 
-            Log::info('💸 Withdraw successful', [
-                'user_id' => $userId,
-                'amount' => $amount,
-                'method' => $method,
-                'new_balance' => $newCoins
-            ]);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Rút tiền thành công!',
-                'data' => [
-                    'old_coins' => $currentCoins,
-                    'new_coins' => $newCoins,
-                    'withdrawn_amount' => $amount,
-                    'method' => $method
-                ]
-            ]);
-
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Dữ liệu không hợp lệ',
-                'errors' => $e->errors()
-            ], 422);
+            return response()->json(['success' => true, 'message' => 'Rút tiền thành công!']);
         } catch (\Exception $e) {
             Log::error('❌ processWithdraw error: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Có lỗi xảy ra: ' . $e->getMessage()
-            ], 500);
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
 
-=======
->>>>>>> 4e0fcd0d9d0af40ad9cee5488658eb3cda4b9836
+    public function showMySheets()
+    {
+        $userId = session('firebase_uid');
+        if (!$userId) return redirect()->route('login')->with('error', 'Vui lòng đăng nhập.');
+
+        $firestore = app(\App\Services\FirestoreRestService::class);
+        $userDoc = $firestore->getDocument('users', $userId);
+        if (!$userDoc['success']) return back()->with('error', 'Không tìm thấy người dùng trong Firestore.');
+
+        $userData = $userDoc['data'];
+        $purchasedProducts = collect();
+
+        if (isset($userData['listsheets']) && is_array($userData['listsheets'])) {
+            if (array_keys($userData['listsheets']) !== range(0, count($userData['listsheets']) - 1)) {
+                foreach ($userData['listsheets'] as $id => $sheet) {
+                    $sheet['product_id'] = $id;
+                    $purchasedProducts->push($sheet);
+                }
+            } else {
+                $purchasedProducts = collect($userData['listsheets']);
+            }
+        }
+
+        return view('account.sheets', [
+            'purchasedProducts' => $purchasedProducts,
+            'totalPurchasedProducts' => $purchasedProducts->count(),
+        ]);
+    }
+
+    /**
+     * Download sheet file
+     */
     public function downloadSheet($id)
     {
         try {
-            // Get current user's UID
             $uid = session('firebase_uid');
-
-            Log::info('Download sheet attempt', [
-                'requested_id' => $id,
-                'user_uid' => $uid,
-                'session_data' => session()->all()
-            ]);
-
             if (!$uid) {
-                return response()->json(['error' => 'Bạn cần đăng nhập để tải file'], 401);
-            }
-
-            // Initialize services
-            $productModel = new Product();
-            $firestoreService = new \App\Services\FirestoreSimple();
-
-            // Find the product in products collection OR purchases collection
-            $product = null;
-            $filePath = null;
-            $isPurchased = false;
-
-            // First check purchases collection (for purchased products)
-            $purchasesResponse = $firestoreService->listDocuments('purchases');
-            if (isset($purchasesResponse['documents'])) {
-                foreach ($purchasesResponse['documents'] as $doc) {
-                    $docData = [];
-                    $docPath = $doc['name'] ?? '';
-                    $docId = basename($docPath);
-
-                    // Extract fields
-                    if (isset($doc['fields'])) {
-                        foreach ($doc['fields'] as $field => $value) {
-                            if (isset($value['stringValue'])) {
-                                $docData[$field] = $value['stringValue'];
-                            } elseif (isset($value['integerValue'])) {
-                                $docData[$field] = (int) $value['integerValue'];
-                            } elseif (isset($value['booleanValue'])) {
-                                $docData[$field] = $value['booleanValue'];
-                            } elseif (isset($value['timestampValue'])) {
-                                $docData[$field] = $value['timestampValue'];
-                            }
-                        }
-                    }
-
-                    // Check if this is the purchase record for current user
-                    if (($docData['product_id'] ?? '') === $id && ($docData['buyer_id'] ?? '') === $uid) {
-                        $product = $docData;
-                        $filePath = $docData['file_path'] ?? null;
-                        $isPurchased = true;
-                        Log::info('Found purchased product', [
-                            'product_id' => $id,
-                            'file_path' => $filePath,
-                            'buyer_id' => $docData['buyer_id'] ?? 'N/A',
-                            'product_name' => $docData['product_name'] ?? 'N/A',
-                            'all_fields' => $docData
-                        ]);
-                        break;
-                    }
+                // Return JSON error for AJAX requests
+                if (request()->ajax() || request()->expectsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Vui lòng đăng nhập để tải file.',
+                        'redirect' => route('login')
+                    ], 401);
                 }
+                
+                return redirect()->route('login')->with('error', 'Vui lòng đăng nhập để tải file.');
             }
 
-            // If not found in purchases, check products collection (for owned products) 
-            if (!$product) {
-                $allProducts = $productModel->getAllActive();
-                if ($allProducts) {
-                    $productsArray = is_array($allProducts) ? $allProducts : $allProducts->toArray();
-                    foreach ($productsArray as $prod) {
-                        if (($prod['id'] ?? '') === $id) {
-                            $product = $prod;
-                            $filePath = $prod['file_path'] ?? null;
-                            Log::info('Found owned product', [
-                                'product_id' => $id,
-                                'file_path' => $filePath,
-                                'seller_id' => $prod['seller_id'] ?? 'N/A'
-                            ]);
-                            break;
-                        }
-                    }
-                }
-            }
-
-            if (!$product) {
-                Log::error('Product not found for download', [
-                    'requested_id' => $id,
-                    'user_uid' => $uid,
-                    'searched_purchases' => isset($purchasesResponse['documents']) ? count($purchasesResponse['documents']) : 0,
-                    'searched_products' => isset($allProducts) ? count($allProducts) : 0
-                ]);
-                return response()->json(['error' => 'Không tìm thấy sheet nhạc hoặc bạn chưa mua sản phẩm này'], 404);
-            }
-
-            // Check if user owns this product or has purchased it
-            $isOwner = isset($product['seller_id']) && $product['seller_id'] === $uid;
-            $hasPurchased = $isPurchased || (isset($product['buyer_id']) && $product['buyer_id'] === $uid);
-
-            Log::info('Download permission check', [
-                'product_id' => $id,
-                'user_uid' => $uid,
-                'is_owner' => $isOwner,
-                'has_purchased' => $hasPurchased,
-                'is_purchased_flag' => $isPurchased,
-                'product_seller_id' => $product['seller_id'] ?? 'N/A',
-                'product_buyer_id' => $product['buyer_id'] ?? 'N/A'
+            // Lấy thông tin sheet từ subcollection
+            $sheets = $this->userPurchaseService->getUserSheets($uid);
+            $targetSheet = null;
+            
+            Log::info('Debug downloadSheet:', [
+                'uid' => $uid,
+                'requested_id' => $id,
+                'sheets_count' => count($sheets),
+                'sheets' => $sheets
             ]);
-
-            if (!$isOwner && !$hasPurchased) {
-                Log::error('Download permission denied', [
-                    'product_id' => $id,
-                    'user_uid' => $uid,
-                    'is_owner' => $isOwner,
-                    'has_purchased' => $hasPurchased,
-                    'product_seller_id' => $product['seller_id'] ?? 'N/A',
-                    'product_buyer_id' => $product['buyer_id'] ?? 'N/A'
-                ]);
-                return response()->json(['error' => 'Bạn không có quyền tải file này. Bạn chỉ có thể tải những sheet đã mua hoặc của chính mình.'], 403);
-            }
-
-            if (!$filePath) {
-                return response()->json(['error' => 'Đường dẫn file không tồn tại trong database'], 404);
-            }
-
-            // Normalize file path (remove leading slash if exists)
-            $normalizedPath = ltrim($filePath, '/\\');
-
-            // Try multiple possible locations for the file
-            $possiblePaths = [
-                public_path($normalizedPath),
-                public_path($filePath),
-                storage_path('app/public/' . $normalizedPath),
-                storage_path('app/' . $normalizedPath),
-                base_path($normalizedPath)
-            ];
-
-            Log::info("Download debug - File search details", [
-                'original_file_path' => $filePath,
-                'normalized_path' => $normalizedPath,
-                'product_name' => $product['product_name'] ?? $product['name'] ?? 'N/A',
-                'is_purchased' => $isPurchased,
-                'is_owner' => $isOwner ?? false
-            ]);
-
-            $fullPath = null;
-            foreach ($possiblePaths as $index => $path) {
-                $exists = file_exists($path);
-                Log::info("Download debug - Path {$index}: {$path} - Exists: " . ($exists ? 'YES' : 'NO'));
-
-                if ($exists) {
-                    $fullPath = $path;
-                    Log::info("Download debug - Selected path: {$fullPath}");
+            
+            foreach ($sheets as $sheet) {
+                if ($sheet['id'] === $id) {
+                    $targetSheet = $sheet['data'];
                     break;
                 }
             }
 
-            // Additional debug: Try to find files in the seller's directory
-            if (!$fullPath) {
-                $sellerPath = public_path('seller_files');
-                Log::info("Download debug - Exploring seller_files directory", [
-                    'seller_files_path' => $sellerPath,
-                    'exists' => file_exists($sellerPath) ? 'YES' : 'NO'
-                ]);
-
-                if (file_exists($sellerPath)) {
-                    // List directories in seller_files
-                    $directories = scandir($sellerPath);
-                    Log::info("Download debug - Seller directories", [
-                        'directories' => array_filter($directories, function ($item) use ($sellerPath) {
-                            return $item !== '.' && $item !== '..' && is_dir($sellerPath . '/' . $item);
-                        })
-                    ]);
-                }
-            }
-
-            if (!$fullPath) {
-                // Let's explore what files actually exist in the seller directory and try to find alternatives
-                $sellerId = $product['seller_id'] ?? 'unknown';
-                $sellerDir = public_path("seller_files/{$sellerId}");
-                $productName = $product['product_name'] ?? $product['name'] ?? '';
-
-                if (is_dir($sellerDir)) {
-                    $actualFiles = [];
-                    $iterator = new \RecursiveIteratorIterator(
-                        new \RecursiveDirectoryIterator($sellerDir),
-                        \RecursiveIteratorIterator::LEAVES_ONLY
-                    );
-
-                    foreach ($iterator as $file) {
-                        if ($file->isFile()) {
-                            $relativePath = str_replace($sellerDir . DIRECTORY_SEPARATOR, '', $file->getPathname());
-                            $actualFiles[] = str_replace('\\', '/', $relativePath);
-                        }
-                    }
-
-                    Log::info('File not found - searching alternatives', [
-                        'seller_id' => $sellerId,
-                        'seller_directory' => $sellerDir,
-                        'looking_for' => basename($filePath),
-                        'product_name' => $productName,
-                        'actual_files' => $actualFiles
-                    ]);
-
-                    // ❌ DISABLED: All fallback matching to prevent wrong file downloads
-                    // The purchase records contain incorrect file paths, 
-                    // so any fallback logic might download wrong files
-                    Log::warning('File fallback matching disabled to prevent wrong downloads', [
-                        'product_name' => $productName,
-                        'original_file_path' => $filePath,
-                        'available_files' => $actualFiles,
-                        'reason' => 'Purchase records contain outdated file paths'
-                    ]);
-                }
-
-                if (!$fullPath) {
-                    Log::error('File not found - no exact match found', [
-                        'original_path' => $filePath,
-                        'tried_paths' => $possiblePaths,
-                        'seller_directory' => $sellerDir ?? 'N/A',
-                        'product_name' => $productName,
-                        'available_files' => $actualFiles ?? []
-                    ]);
-
-                    $errorMessage = 'File không tìm thấy';
-                    if (empty($filePath)) {
-                        $errorMessage = 'Sản phẩm này chưa có file đính kèm. Vui lòng liên hệ người bán.';
-                    } else {
-                        $errorMessage = "File '$productName' không tồn tại hoặc đã bị di chuyển. Vui lòng liên hệ người bán.";
-                    }
-
+            if (!$targetSheet) {
+                $errorMsg = 'Không tìm thấy sheet này hoặc bạn chưa mua sheet này.';
+                
+                if (request()->ajax() || request()->expectsJson()) {
                     return response()->json([
-                        'error' => $errorMessage,
-                        'file_path' => $filePath,
-                        'product_name' => $productName
+                        'success' => false,
+                        'message' => $errorMsg
                     ], 404);
                 }
+                
+                return redirect()->route('account.sheets')->with('error', $errorMsg);
             }
 
-            // Get original filename from file_path
-            $originalFilename = basename($filePath);
-
-            // Log for debugging
-            Log::info('Download filename processing', [
-                'file_path' => $filePath,
-                'original_filename' => $originalFilename,
-                'product_name' => $product['name'] ?? $product['product_name'] ?? 'N/A'
+            $filePath = $targetSheet['file_url'] ?? '';
+            
+            Log::info('Debug file path:', [
+                'file_url' => $filePath,
+                'target_sheet' => $targetSheet
             ]);
-
-            // Determine the best filename to use
-            if (!empty($originalFilename) && $originalFilename !== '.' && $originalFilename !== '..' && strlen($originalFilename) > 3) {
-                // Use original filename, but clean it up
-                $filename = $originalFilename;
-
-                // Remove timestamp prefix if it exists (e.g., "1760092263_")
-                $filename = preg_replace('/^\d+_/', '', $filename);
-
-                // Only replace truly dangerous characters for file systems
-                $filename = str_replace(['<', '>', ':', '"', '/', '\\', '|', '?', '*'], '_', $filename);
-            } else {
-                // Fallback to product name
-                $productName = $product['product_name'] ?? $product['name'] ?? $product['title'] ?? 'sheet-nhac';
-
-                // Clean product name but preserve Vietnamese characters
-                $filename = str_replace(['<', '>', ':', '"', '/', '\\', '|', '?', '*'], '_', $productName);
-
-                // Add .txt extension if no extension exists
-                if (!preg_match('/\.(txt|pdf|doc|docx|jpg|png)$/i', $filename)) {
-                    $filename .= '.txt';
+            
+            if (empty($filePath)) {
+                $errorMsg = 'File không tồn tại hoặc đã bị xóa.';
+                
+                if (request()->ajax() || request()->expectsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => $errorMsg
+                    ], 404);
                 }
+                
+                return redirect()->route('account.sheets')->with('error', $errorMsg);
             }
 
-            // Ensure filename is not too long (Windows limit is 255 characters)
-            if (strlen($filename) > 200) {
-                $extension = pathinfo($filename, PATHINFO_EXTENSION);
-                $baseName = substr(pathinfo($filename, PATHINFO_FILENAME), 0, 190);
-                $filename = $baseName . '.' . ($extension ?: 'txt');
+            // Kiểm tra file có tồn tại không
+            $fullPath = public_path($filePath);
+            
+            Log::info('Debug file check:', [
+                'file_path' => $filePath,
+                'full_path' => $fullPath,
+                'file_exists' => file_exists($fullPath)
+            ]);
+            
+            if (!file_exists($fullPath)) {
+                $errorMsg = 'File không tồn tại trên server: ' . basename($filePath);
+                
+                if (request()->ajax() || request()->expectsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => $errorMsg
+                    ], 404);
+                }
+                
+                return redirect()->route('account.sheets')->with('error', $errorMsg);
             }
 
-            Log::info('Download filename', [
-                'original_file_path' => $filePath,
-                'original_filename' => $originalFilename,
-                'final_filename' => $filename
+            // Tạo tên file download thân thiện hơn
+            $originalFileName = basename($filePath);
+            $sheetTitle = $targetSheet['title'] ?? 'sheet_' . $id;
+            
+            // Làm sạch tên file và giữ nguyên extension
+            $cleanTitle = preg_replace('/[^a-zA-Z0-9\-_\s]/', '', $sheetTitle);
+            $cleanTitle = preg_replace('/\s+/', '_', trim($cleanTitle));
+            
+            // Lấy extension từ file gốc
+            $extension = pathinfo($originalFileName, PATHINFO_EXTENSION);
+            if (empty($extension)) {
+                $extension = 'txt'; // Default extension
+            }
+            
+            $downloadFileName = $cleanTitle . '.' . $extension;
+
+            // Set headers để đảm bảo download thành công
+            $headers = [
+                'Content-Type' => 'application/octet-stream',
+                'Content-Disposition' => 'attachment; filename="' . $downloadFileName . '"',
+                'Cache-Control' => 'no-cache, no-store, must-revalidate',
+                'Pragma' => 'no-cache',
+                'Expires' => '0'
+            ];
+
+            Log::info('Downloading file:', [
+                'original_path' => $filePath,
+                'download_name' => $downloadFileName,
+                'file_size' => filesize($fullPath)
             ]);
 
-            return response()->download($fullPath, $filename);
+            // Tạo activity cho việc download
+            $activityService = new \App\Services\ActivityService();
+            $activityService->createActivity(
+                $uid,
+                'download',
+                "Bạn đã tải về sheet nhạc: {$targetSheet['title']}",
+                [
+                    'sheet_title' => $targetSheet['title'],
+                    'file_name' => $downloadFileName,
+                    'file_size' => filesize($fullPath),
+                    'transaction_type' => 'download'
+                ]
+            );
+
+            return response()->download($fullPath, $downloadFileName, $headers);
+
         } catch (\Exception $e) {
-            Log::error('Error downloading sheet: ' . $e->getMessage());
-            return response()->json(['error' => 'Có lỗi xảy ra khi tải file'], 500);
-        }
-    }
-<<<<<<< HEAD
-
-
-
-
-public function showMySheets()
-{
-    $userId = session('firebase_uid');
-    if (!$userId) {
-        return redirect()->route('login')->with('error', 'Vui lòng đăng nhập.');
-    }
-
-    // 🔹 Lấy document user
-    $firestore = app(\App\Services\FirestoreRestService::class);
-    $userDoc = $firestore->getDocument('users', $userId);
-
-    if (!$userDoc['success']) {
-        return back()->with('error', 'Không tìm thấy người dùng trong Firestore.');
-    }
-
-    $userData = $userDoc['data'];
-
-    // 🔹 Lấy danh sách sheet đã mua (listsheets)
-    $purchasedProducts = collect();
-
-    if (isset($userData['listsheets']) && is_array($userData['listsheets'])) {
-        // Nếu là map (key => product_id)
-        if (array_keys($userData['listsheets']) !== range(0, count($userData['listsheets']) - 1)) {
-            foreach ($userData['listsheets'] as $id => $sheet) {
-                $sheet['product_id'] = $id;
-                $purchasedProducts->push($sheet);
+            Log::error('Download sheet error: ' . $e->getMessage());
+            
+            $errorMsg = 'Có lỗi khi tải file: ' . $e->getMessage();
+            
+            if (request()->ajax() || request()->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $errorMsg
+                ], 500);
             }
-        } else {
-            // Nếu là array
-            $purchasedProducts = collect($userData['listsheets']);
+            
+            return redirect()->route('account.sheets')->with('error', $errorMsg);
         }
     }
-
-    return view('account.sheets', [
-        'purchasedProducts' => $purchasedProducts,
-        'totalPurchasedProducts' => $purchasedProducts->count(),
-    ]);
-}
-
-
-=======
->>>>>>> 4e0fcd0d9d0af40ad9cee5488658eb3cda4b9836
 }
