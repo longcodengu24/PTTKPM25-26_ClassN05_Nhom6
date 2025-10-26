@@ -4,7 +4,7 @@
 
 **Phân tích kỹ thuật phần mềm N05_Nhóm6**
 
-**Đề tài:** Website thương mại bản nhạc cho trò chơi Sky: Children of the Light
+**Đề tài:** Website thương mại các bản nhạc cho trò chơi Sky: Children of the Light
 
 ### 👥 Thành viên nhóm:
 1. **Lê Ngọc Khánh** - 23010546
@@ -224,3 +224,4 @@ routes/
 ## 📄 License
 
 Dự án được phát hành dưới [MIT License](https://opensource.org/licenses/MIT).
+
